@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory Ops Board — ระบบติดตามงานโรงงาน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14181d;
+    --panel:#1b2027;
+    --panel-2:#20262e;
+    --line:#2b323c;
+    --line-soft:#242a32;
+    --text:#e8eaed;
+    --muted:#8b95a1;
+    --muted-2:#5f6874;
+    --urgent:#e5484d;
+    --urgent-bg:rgba(229,72,77,.12);
+    --high:#f5a623;
+    --high-bg:rgba(245,166,35,.12);
+    --normal:#3fb950;
+    --normal-bg:rgba(63,185,80,.12);
+    --steel:#4a9eff;
+    --steel-bg:rgba(74,158,255,.12);
+    --violet:#a371f7;
+    --violet-bg:rgba(163,113,247,.12);
+    --mono:'IBM Plex Mono',monospace;
+    --cond:'IBM Plex Sans Condensed',sans-serif;
+    --sans:'IBM Plex Sans Thai','IBM Plex Mono',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+  ::selection{background:var(--steel-bg);color:var(--text);}
+  ::-webkit-scrollbar{height:10px;width:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted-2);}
+
+  /* ===== Top bar ===== */
+  .topbar{
+    display:flex;align-items:center;gap:16px;
+    padding:14px 20px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#171b21,#14181d);
+    position:sticky;top:0;z-index:40;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:32px;height:32px;border-radius:6px;background:var(--steel-bg);
+    border:1px solid var(--steel);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-weight:600;color:var(--steel);font-size:13px;
+  }
+  .brand-text h1{font-family:var(--cond);font-size:16px;margin:0;letter-spacing:.3px;font-weight:700;}
+  .brand-text .sub{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.4px;}
+  .topbar .spacer{flex:1;}
+  .view-switch{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:3px;}
+  .view-switch button{
+    border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:6px;
+    font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:.15s;
+  }
+  .view-switch button.active{background:var(--panel);color:var(--text);box-shadow:0 1px 0 var(--line);}
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel-2);
+    color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;
+    font-family:var(--sans);transition:.15s;
+  }
+  .btn:hover{border-color:var(--muted-2);}
+  .btn-primary{background:var(--steel);border-color:var(--steel);color:#0b1420;font-weight:600;}
+  .btn-primary:hover{background:#63aeff;}
+  .btn-ghost{background:transparent;}
+  .btn-danger{color:var(--urgent);}
+
+  /* ===== Layout ===== */
+  .layout{display:flex;align-items:flex-start;}
+  .sidebar{
+    width:230px;flex-shrink:0;padding:18px 14px;border-right:1px solid var(--line);
+    position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto;
+  }
+  .side-group{margin-bottom:22px;}
+  .side-group h4{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;color:var(--muted-2);
+    text-transform:uppercase;margin:0 0 8px 4px;
+  }
+  .chip-list{display:flex;flex-direction:column;gap:2px;}
+  .chip{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:7px 8px;border-radius:6px;font-size:12.5px;color:var(--muted);cursor:pointer;
+    border:1px solid transparent;transition:.12s;
+  }
+  .chip:hover{background:var(--panel-2);color:var(--text);}
+  .chip.active{background:var(--steel-bg);border-color:var(--steel);color:var(--text);}
+  .chip .count{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);}
+  .chip.active .count{color:var(--steel);}
+  .search-box{
+    display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:8px;padding:8px 10px;margin-bottom:16px;
+  }
+  .search-box input{background:transparent;border:none;outline:none;color:var(--text);font-size:12.5px;width:100%;font-family:var(--sans);}
+  .search-box input::placeholder{color:var(--muted-2);}
+
+  .main{flex:1;min-width:0;padding:18px 20px 60px;}
+  .stats-row{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+  .stat-card{
+    flex:1;min-width:130px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;position:relative;overflow:hidden;
+  }
+  .stat-card .n{font-family:var(--cond);font-size:26px;font-weight:700;line-height:1;}
+  .stat-card .l{font-size:11px;color:var(--muted);margin-top:4px;}
+  .stat-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+  .stat-card.total::before{background:var(--steel);}
+  .stat-card.urgent::before{background:var(--urgent);}
+  .stat-card.progress::before{background:var(--high);}
+  .stat-card.overdue::before{background:var(--violet);}
+
+  /* ===== Board ===== */
+  .board{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:20px;}
+  .col{
+    width:290px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    display:flex;flex-direction:column;max-height:calc(100vh - 220px);
+  }
+  .col.drag-over{border-color:var(--steel);box-shadow:0 0 0 1px var(--steel);}
+  .col-head{
+    display:flex;align-items:center;gap:8px;padding:12px 12px 10px;border-bottom:1px solid var(--line-soft);
+  }
+  .col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .col-head .name{font-family:var(--cond);font-weight:700;font-size:13.5px;flex:1;}
+  .col-head .cnt{font-family:var(--mono);font-size:11px;color:var(--muted-2);background:var(--panel-2);padding:2px 7px;border-radius:20px;}
+  .col-body{padding:10px;display:flex;flex-direction:column;gap:9px;overflow-y:auto;}
+  .col-add{margin:0 10px 12px;padding:8px;border:1px dashed var(--line);border-radius:8px;text-align:center;
+    color:var(--muted-2);font-size:12px;cursor:pointer;background:transparent;}
+  .col-add:hover{border-color:var(--muted-2);color:var(--muted);}
+
+  /* ===== Ticket card (signature element) ===== */
+  .ticket{
+    position:relative;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:10px 11px 11px 14px;cursor:grab;transition:.12s;
+  }
+  .ticket:hover{border-color:var(--muted-2);transform:translateY(-1px);}
+  .ticket:active{cursor:grabbing;}
+  .ticket::before{
+    content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;
+  }
+  .ticket.p-urgent::before{background:var(--urgent);}
+  .ticket.p-high::before{background:var(--high);}
+  .ticket.p-normal::before{background:var(--normal);}
+  .ticket-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .ticket-id{font-family:var(--mono);font-size:10px;color:var(--muted-2);letter-spacing:.4px;}
+  .ticket-cat{font-size:9.5px;color:var(--muted-2);font-family:var(--mono);}
+  .ticket-title{font-size:12.5px;line-height:1.4;color:var(--text);margin-bottom:8px;font-weight:500;}
+  .ticket-meta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+  .tag{font-size:10px;padding:2.5px 7px;border-radius:5px;font-family:var(--mono);letter-spacing:.2px;}
+  .tag.dept{background:var(--panel);border:1px solid var(--line);color:var(--muted);}
+  .tag.pr-urgent{background:var(--urgent-bg);color:var(--urgent);}
+  .tag.pr-high{background:var(--high-bg);color:var(--high);}
+  .tag.pr-normal{background:var(--normal-bg);color:var(--normal);}
+  .ticket-foot{display:flex;justify-content:space-between;align-items:center;}
+  .avatar{
+    width:20px;height:20px;border-radius:50%;background:var(--steel-bg);border:1px solid var(--steel);
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--steel);font-family:var(--mono);
+  }
+  .due{font-size:10.5px;font-family:var(--mono);color:var(--muted);}
+  .due.overdue{color:var(--urgent);font-weight:600;}
+  .due.soon{color:var(--high);}
+
+  /* ===== List view ===== */
+  .list-wrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  thead th{
+    text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;
+    color:var(--muted-2);padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel-2);
+    position:sticky;top:61px;
+  }
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+  tbody tr{cursor:pointer;transition:.1s;}
+  tbody tr:hover{background:var(--panel-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  .status-pill{font-size:10.5px;padding:3px 9px;border-radius:20px;font-family:var(--mono);white-space:nowrap;}
+  .st-1{background:var(--steel-bg);color:var(--steel);}
+  .st-2{background:var(--high-bg);color:var(--high);}
+  .st-3{background:var(--violet-bg);color:var(--violet);}
+  .st-4{background:var(--normal-bg);color:var(--normal);}
+
+  /* ===== Modal ===== */
+  .overlay{
+    position:fixed;inset:0;background:rgba(10,12,15,.6);backdrop-filter:blur(2px);
+    display:none;align-items:flex-start;justify-content:center;z-index:100;padding:40px 20px;overflow-y:auto;
+  }
+  .overlay.show{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;width:100%;max-width:560px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);}
+  .modal-head h3{margin:0;font-family:var(--cond);font-size:16px;font-weight:700;}
+  .modal-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:4px;}
+  .modal-body{padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.3px;}
+  .field input,.field select,.field textarea{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:8px 10px;
+    color:var(--text);font-size:13px;font-family:var(--sans);outline:none;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--steel);}
+  .field textarea{resize:vertical;min-height:60px;}
+  .modal-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid var(--line);}
+
+  .empty{text-align:center;padding:50px 20px;color:var(--muted-2);}
+  .empty .big{font-family:var(--cond);font-size:15px;color:var(--muted);margin-bottom:4px;}
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:10px 18px;
+    border-radius:8px;font-size:12.5px;opacity:0;pointer-events:none;transition:.25s;z-index:200;font-family:var(--mono);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media(max-width:860px){
+    .sidebar{display:none;}
+    .modal-body{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">FO</div>
+    <div class="brand-text">
+      <h1>Factory Ops Board</h1>
+      <div class="sub">TASK &amp; CAPA TRACKING</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="view-switch">
+    <button data-view="board" class="active">Board</button>
+    <button data-view="list">List</button>
+  </div>
+  <button class="btn" id="exportBtn">Export JSON</button>
+  <button class="btn btn-primary" id="newTaskBtn">+ งานใหม่</button>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="search-box">
+      <span>⌕</span>
+      <input type="text" id="searchInput" placeholder="ค้นหางาน...">
+    </div>
+
+    <div class="side-group">
+      <h4>สถานะ</h4>
+      <div class="chip-list" id="filterStatus"></div>
+    </div>
+    <div class="side-group">
+      <h4>ความสำคัญ</h4>
+      <div class="chip-list" id="filterPriority"></div>
+    </div>
+    <div class="side-group">
+      <h4>แผนก</h4>
+      <div class="chip-list" id="filterDept"></div>
+    </div>
+    <div class="side-group">
+      <h4>หมวดหมู่</h4>
+      <div class="chip-list" id="filterCategory"></div>
+    </div>
+    <button class="btn btn-ghost" id="clearFilters" style="width:100%;justify-content:center;">ล้างตัวกรอง</button>
+  </div>
+
+  <div class="main">
+    <div class="stats-row" id="statsRow"></div>
+    <div id="boardView" class="board"></div>
+    <div id="listView" class="list-wrap" style="display:none;">
+      <table>
+        <thead><tr>
+          <th>Task</th><th>หมวดหมู่</th><th>ผู้รับผิดชอบ</th><th>แผนก</th><th>ความสำคัญ</th><th>สถานะ</th><th>กำหนดเสร็จ</th>
+        </tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">งานใหม่</h3>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field full">
+        <label>ชื่อรายการงาน / ปัญหาที่พบ</label>
+        <input type="text" id="f-title" placeholder="เช่น ตรวจสอบสายการผลิต 2">
+      </div>
+      <div class="field">
+        <label>หมวดหมู่</label>
+        <select id="f-category"></select>
+      </div>
+      <div class="field">
+        <label>ความสำคัญ</label>
+        <select id="f-priority">
+          <option value="Urgent">🔴 Urgent</option>
+          <option value="High">🟡 High</option>
+          <option value="Normal">🟢 Normal</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>สถานะ</label>
+        <select id="f-status">
+          <option value="1">1. To Do</option>
+          <option value="2">2. In Progress</option>
+          <option value="3">3. Pending Inspection</option>
+          <option value="4">4. Complete</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ผู้รับผิดชอบ</label>
+        <input type="text" id="f-assignee" placeholder="name@factory.com">
+      </div>
+      <div class="field">
+        <label>แผนก</label>
+        <select id="f-department"></select>
+      </div>
+      <div class="field">
+        <label>พื้นที่ / ไลน์ผลิต</label>
+        <input type="text" id="f-location">
+      </div>
+      <div class="field">
+        <label>กำหนดเสร็จ</label>
+        <input type="date" id="f-due">
+      </div>
+      <div class="field full">
+        <label>Link เอกสาร/รูปภาพ (OneDrive)</label>
+        <input type="text" id="f-link" placeholder="https://onedrive.live.com/...">
+      </div>
+      <div class="field full">
+        <label>หมายเหตุ / รายละเอียด CAPA</label>
+        <textarea id="f-note"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="deleteBtn" style="display:none;">ลบงาน</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost" id="cancelBtn">ยกเลิก</button>
+      <button class="btn btn-primary" id="saveBtn">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const CATEGORIES = [
+    "01. งบประมาณ & วางแผน",
+    "02. มาตรฐาน BRC & QA",
+    "03. ความสะอาด & สุขอนามัย",
+    "04. ปรับปรุงกระบวนการ & เครื่องจักร",
+    "05. ย้ายพื้นที่ & โครงสร้าง"
+  ];
+  const DEPARTMENTS = ["Production","QA / QC","Maintenance","Packing Room","Warehouse","Finance & Management"];
+  const STATUSES = [
+    {id:"1", name:"1. To Do", color:"var(--steel)"},
+    {id:"2", name:"2. In Progress", color:"var(--high)"},
+    {id:"3", name:"3. Pending Inspection", color:"var(--violet)"},
+    {id:"4", name:"4. Complete", color:"var(--normal)"}
+  ];
+  const PRIORITIES = [
+    {id:"Urgent", label:"🔴 Urgent"},
+    {id:"High", label:"🟡 High"},
+    {id:"Normal", label:"🟢 Normal"}
+  ];
+
+  const SEED = [
+    {id:"TSK-001", title:"1. จัดทำงบประมาณ (Budget) ก.ย. ถึงสิ้นปี", category:CATEGORIES[0], priority:"High", status:"1", assignee:"Somchai.p@factory.com", department:"Finance & Management", location:"สำนักงานบัญชี", due:"2026-09-30", link:"https://onedrive.live.com/budget_q3_q4", note:"รวบรวมค่าใช้จ่ายและประมาณการงบประมาณ"},
+    {id:"TSK-002", title:"2. วางแผนจัดทำงบประมาณ (Budget) ปี 2579", category:CATEGORIES[0], priority:"Normal", status:"1", assignee:"Somchai.p@factory.com", department:"Finance & Management", location:"สำนักงานบัญชี", due:"2026-11-30", link:"https://onedrive.live.com/budget_2579", note:"วางแผนงบประมาณลงทุนประจำปี 2579"},
+    {id:"TSK-003", title:"3. โครงการเริ่มใช้ถุงแบบไม่ต้องเย็บด้าย", category:CATEGORIES[3], priority:"Normal", status:"2", assignee:"Anan.k@factory.com", department:"Packing Room", location:"ห้องแพ็คไลน์ 1", due:"2026-10-15", link:"https://onedrive.live.com/bag_trial", note:"ทดลองความแข็งแรงของการซีลความร้อน"},
+    {id:"TSK-004", title:"4. BRC Audit: เดินตรวจไลน์เพื่อประเมินการซ่อมบำรุง", category:CATEGORIES[1], priority:"High", status:"2", assignee:"Wichai.m@factory.com", department:"Maintenance", location:"ไลน์ผลิตทั้งหมด", due:"2026-09-15", link:"https://onedrive.live.com/brc_audit_walkthrough", note:"ทำ Punch list ร่วมระหว่าง QA และช่างซ่อม"},
+    {id:"TSK-005", title:"5. ยกระดับความสะอาดในไลน์ผลิต (ยังไม่ดีพอ)", category:CATEGORIES[2], priority:"High", status:"2", assignee:"Suda.t@factory.com", department:"Production", location:"ไลน์ผลิต 1-3", due:"2026-08-30", link:"https://onedrive.live.com/hygiene_checklist", note:"ปรับ Cleaning Schedule และสุ่มตรวจความสะอาด"},
+    {id:"TSK-006", title:"6. ทดลองแพ็ค MK โดยใช้เครื่องจักร", category:CATEGORIES[3], priority:"Normal", status:"1", assignee:"Anan.k@factory.com", department:"Production", location:"ห้องแพ็คไลน์ 2", due:"2026-09-20", link:"https://onedrive.live.com/mk_packing_trial", note:"บันทึก Cycle Time, Yield และความสมบูรณ์ซอง"},
+    {id:"TSK-007", title:"7. แก้ไขถุงในห้องแพ็คยังใช้ผิดประเภท", category:CATEGORIES[1], priority:"High", status:"3", assignee:"Nok.s@factory.com", department:"Packing Room", location:"ห้องแพ็คไลน์ 1-2", due:"2026-08-25", link:"https://onedrive.live.com/bag_spec_sop", note:"ทำ Visual Control ติดสเปคถุงและเรียกเก็บถุงผิดประเภท"},
+    {id:"TSK-008", title:"8. แก้ไขวัตถุดิบหมดอายุไม่มีป้าย Hold", category:CATEGORIES[1], priority:"Urgent", status:"2", assignee:"Kitti.r@factory.com", department:"Warehouse", location:"คลังวัตถุดิบ RM", due:"2026-08-20", link:"https://onedrive.live.com/hold_protocol", note:"อบรมพนักงานและจัดทำมาตรการกักกันวัตถุดิบ"},
+    {id:"TSK-009", title:"8.1 แก้ไข RM ไม่มีป้ายบ่งชี้", category:CATEGORIES[1], priority:"Urgent", status:"3", assignee:"Kitti.r@factory.com", department:"Warehouse", location:"คลังวัตถุดิบ RM", due:"2026-08-18", link:"https://onedrive.live.com/rm_tag_photo", note:"ติดป้าย RM Tag ครบทุกจุด รอ QA เดินตรวจรับงาน"},
+    {id:"TSK-010", title:"9. โครงการย้ายห้องล้างไปพื้นที่ใหม่", category:CATEGORIES[4], priority:"Normal", status:"1", assignee:"Wichai.m@factory.com", department:"Maintenance", location:"โซนห้องล้างใหม่", due:"2026-12-15", link:"https://onedrive.live.com/washing_room_layout", note:"ออกแบบ Layout, ระบบน้ำ, ไฟฟ้า และระบายน้ำตาม BRC"}
+  ];
+
+  let tasks = [];
+  let filters = { status:null, priority:null, department:null, category:null, search:"" };
+  let currentView = "board";
+  let editingId = null;
+  let storageOK = true;
+
+  const $ = (sel,root)=> (root||document).querySelector(sel);
+  const $$ = (sel,root)=> Array.from((root||document).querySelectorAll(sel));
+
+  function toast(msg){
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(()=>t.classList.remove("show"), 1800);
+  }
+
+  function nextId(){
+    let max = 0;
+    tasks.forEach(t=>{
+      const m = /TSK-(\d+)/.exec(t.id);
+      if(m) max = Math.max(max, parseInt(m[1],10));
+    });
+    return "TSK-" + String(max+1).padStart(3,"0");
+  }
+
+  async function loadTasks(){
+    try{
+      const res = await window.storage.get("factory-tasks", false);
+      if(res && res.value){
+        tasks = JSON.parse(res.value);
+        return;
+      }
+    }catch(e){ /* key doesn't exist yet */ }
+    tasks = SEED.slice();
+    await persist();
+  }
+
+  async function persist(){
+    try{
+      const result = await window.storage.set("factory-tasks", JSON.stringify(tasks), false);
+      if(!result){ storageOK = false; }
+    }catch(e){
+      storageOK = false;
+      console.error("storage error", e);
+    }
+  }
+
+  function initials(email){
+    const name = (email||"?").split("@")[0].split(".")[0];
+    return (name[0]||"?").toUpperCase();
+  }
+
+  function dueClass(dateStr, status){
+    if(!dateStr || status === "4") return "";
+    const d = new Date(dateStr + "T00:00:00");
+    const now = new Date(); now.setHours(0,0,0,0);
+    const diffDays = Math.round((d - now)/86400000);
+    if(diffDays < 0) return "overdue";
+    if(diffDays <= 3) return "soon";
+    return "";
+  }
+
+  function fmtDue(dateStr){
+    if(!dateStr) return "—";
+    const d = new Date(dateStr + "T00:00:00");
+    const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+    return d.getDate() + " " + months[d.getMonth()] + " " + (d.getFullYear()+543).toString().slice(-2);
+  }
+
+  function priorityClass(p){ return p==="Urgent" ? "urgent" : p==="High" ? "high" : "normal"; }
+  function priorityLabel(p){ return PRIORITIES.find(x=>x.id===p).label; }
+
+  function filteredTasks(){
+    return tasks.filter(t=>{
+      if(filters.status && t.status !== filters.status) return false;
+      if(filters.priority && t.priority !== filters.priority) return false;
+      if(filters.department && t.department !== filters.department) return false;
+      if(filters.category && t.category !== filters.category) return false;
+      if(filters.search){
+        const s = filters.search.toLowerCase();
+        const hay = (t.title+" "+t.id+" "+t.assignee+" "+t.location).toLowerCase();
+        if(!hay.includes(s)) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderSidebar(){
+    const list = filteredTasks();
+
+    function buildChips(container, items, key, getLabel, getId){
+      const el = $(container);
+      el.innerHTML = "";
+      items.forEach(item=>{
+        const id = getId(item);
+        const label = getLabel(item);
+        const count = tasks.filter(t=>t[key]===id).length;
+        const div = document.createElement("div");
+        div.className = "chip" + (filters[key]===id ? " active" : "");
+        div.innerHTML = `<span>${label}</span><span class="count">${count}</span>`;
+        div.onclick = ()=>{
+          filters[key] = filters[key]===id ? null : id;
+          renderAll();
+        };
+        el.appendChild(div);
+      });
+    }
+
+    buildChips("#filterStatus", STATUSES, "status", s=>s.name, s=>s.id);
+    buildChips("#filterPriority", PRIORITIES, "priority", p=>p.label, p=>p.id);
+    buildChips("#filterDept", DEPARTMENTS.map(d=>({d})), "department", x=>x.d, x=>x.d);
+    buildChips("#filterCategory", CATEGORIES.map(c=>({c})), "category", x=>x.c, x=>x.c);
+  }
+
+  function renderStats(){
+    const list = filteredTasks();
+    const urgent = list.filter(t=>t.priority==="Urgent" && t.status!=="4").length;
+    const progress = list.filter(t=>t.status==="2").length;
+    const overdue = list.filter(t=> dueClass(t.due,t.status)==="overdue").length;
+    $("#statsRow").innerHTML = `
+      <div class="stat-card total"><div class="n">${list.length}</div><div class="l">งานทั้งหมด</div></div>
+      <div class="stat-card urgent"><div class="n">${urgent}</div><div class="l">เร่งด่วน (ยังไม่เสร็จ)</div></div>
+      <div class="stat-card progress"><div class="n">${progress}</div><div class="l">กำลังดำเนินการ</div></div>
+      <div class="stat-card overdue"><div class="n">${overdue}</div><div class="l">เลยกำหนด</div></div>
+    `;
+  }
+
+  function ticketHTML(t){
+    const dc = dueClass(t.due, t.status);
+    return `
+      <div class="ticket p-${priorityClass(t.priority)}" draggable="true" data-id="${t.id}">
+        <div class="ticket-top">
+          <span class="ticket-id">${t.id}</span>
+          <span class="ticket-cat">${t.category.split(".")[0]}</span>
+        </div>
+        <div class="ticket-title">${escapeHTML(t.title)}</div>
+        <div class="ticket-meta">
+          <span class="tag pr-${priorityClass(t.priority)}">${priorityLabel(t.priority)}</span>
+          <span class="tag dept">${t.department}</span>
+        </div>
+        <div class="ticket-foot">
+          <span class="avatar">${initials(t.assignee)}</span>
+          <span class="due ${dc}">${fmtDue(t.due)}</span>
+        </div>
+      </div>`;
+  }
+
+  function escapeHTML(s){
+    return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function renderBoard(){
+    const list = filteredTasks();
+    const el = $("#boardView");
+    el.innerHTML = "";
+    STATUSES.forEach(st=>{
+      const items = list.filter(t=>t.status===st.id);
+      const col = document.createElement("div");
+      col.className = "col";
+      col.dataset.status = st.id;
+      col.innerHTML = `
+        <div class="col-head">
+          <span class="col-dot" style="background:${st.color}"></span>
+          <span class="name">${st.name}</span>
+          <span class="cnt">${items.length}</span>
+        </div>
+        <div class="col-body">${items.map(ticketHTML).join("") || `<div class="empty" style="padding:24px 6px;"><div class="big">ไม่มีงาน</div>ลากบัตรงานมาวางที่นี่</div>`}</div>
+      `;
+      el.appendChild(col);
+    });
+    attachCardEvents();
+    attachDragEvents();
+  }
+
+  function renderList(){
+    const list = filteredTasks();
+    const body = $("#listBody");
+    if(!list.length){
+      body.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="big">ไม่พบงานที่ตรงกับตัวกรอง</div>ลองล้างตัวกรองหรือค้นหาคำอื่น</div></td></tr>`;
+      return;
+    }
+    body.innerHTML = list.map(t=>{
+      const dc = dueClass(t.due, t.status);
+      const st = STATUSES.find(s=>s.id===t.status);
+      return `<tr data-id="${t.id}">
+        <td><strong style="font-weight:500;">${escapeHTML(t.title)}</strong><div style="color:var(--muted-2);font-family:var(--mono);font-size:10px;margin-top:2px;">${t.id}</div></td>
+        <td style="color:var(--muted);">${t.category}</td>
+        <td>${t.assignee}</td>
+        <td style="color:var(--muted);">${t.department}</td>
+        <td><span class="tag pr-${priorityClass(t.priority)}">${priorityLabel(t.priority)}</span></td>
+        <td><span class="status-pill st-${t.status}">${st.name}</span></td>
+        <td class="due ${dc}">${fmtDue(t.due)}</td>
+      </tr>`;
+    }).join("");
+    $$("#listBody tr").forEach(row=>{
+      row.onclick = ()=> openModal(row.dataset.id);
+    });
+  }
+
+  function renderAll(){
+    renderSidebar();
+    renderStats();
+    if(currentView === "board") renderBoard(); else renderList();
+  }
+
+  function attachCardEvents(){
+    $$(".ticket").forEach(card=>{
+      card.addEventListener("click", ()=> openModal(card.dataset.id));
+    });
+  }
+
+  function attachDragEvents(){
+    let draggedId = null;
+    $$(".ticket").forEach(card=>{
+      card.addEventListener("dragstart", e=>{
+        draggedId = card.dataset.id;
+        e.dataTransfer.effectAllowed = "move";
+      });
+    });
+    $$(".col").forEach(col=>{
+      col.addEventListener("dragover", e=>{
+        e.preventDefault();
+        col.classList.add("drag-over");
+      });
+      col.addEventListener("dragleave", ()=> col.classList.remove("drag-over"));
+      col.addEventListener("drop", async e=>{
+        e.preventDefault();
+        col.classList.remove("drag-over");
+        if(!draggedId) return;
+        const task = tasks.find(t=>t.id===draggedId);
+        if(task && task.status !== col.dataset.status){
+          task.status = col.dataset.status;
+          await persist();
+          renderAll();
+          toast(`ย้าย ${draggedId} ไปยัง ${STATUSES.find(s=>s.id===col.dataset.status).name}`);
+        }
+      });
+    });
+  }
+
+  function populateSelect(id, options){
+    const el = $(id);
+    el.innerHTML = options.map(o=>`<option value="${o}">${o}</option>`).join("");
+  }
+
+  function openModal(id){
+    editingId = id || null;
+    const t = id ? tasks.find(x=>x.id===id) : null;
+    $("#modalTitle").textContent = t ? `แก้ไขงาน — ${t.id}` : "งานใหม่";
+    $("#deleteBtn").style.display = t ? "inline-flex" : "none";
+
+    populateSelect("#f-category", CATEGORIES);
+    populateSelect("#f-department", DEPARTMENTS);
+
+    $("#f-title").value = t ? t.title : "";
+    $("#f-category").value = t ? t.category : CATEGORIES[0];
+    $("#f-priority").value = t ? t.priority : "Normal";
+    $("#f-status").value = t ? t.status : "1";
+    $("#f-assignee").value = t ? t.assignee : "";
+    $("#f-department").value = t ? t.department : DEPARTMENTS[0];
+    $("#f-location").value = t ? t.location : "";
+    $("#f-due").value = t ? t.due : "";
+    $("#f-link").value = t ? t.link : "";
+    $("#f-note").value = t ? t.note : "";
+
+    $("#overlay").classList.add("show");
+  }
+
+  function closeModal(){
+    $("#overlay").classList.remove("show");
+    editingId = null;
+  }
+
+  async function saveTask(){
+    const title = $("#f-title").value.trim();
+    if(!title){ toast("กรุณากรอกชื่อรายการงาน"); return; }
+    const data = {
+      title,
+      category: $("#f-category").value,
+      priority: $("#f-priority").value,
+      status: $("#f-status").value,
+      assignee: $("#f-assignee").value.trim(),
+      department: $("#f-department").value,
+      location: $("#f-location").value.trim(),
+      due: $("#f-due").value,
+      link: $("#f-link").value.trim(),
+      note: $("#f-note").value.trim()
+    };
+    if(editingId){
+      const t = tasks.find(x=>x.id===editingId);
+      Object.assign(t, data);
+      toast("บันทึกการแก้ไขแล้ว");
+    }else{
+      data.id = nextId();
+      tasks.push(data);
+      toast("เพิ่มงานใหม่แล้ว: " + data.id);
+    }
+    await persist();
+    closeModal();
+    renderAll();
+  }
+
+  async function deleteTask(){
+    if(!editingId) return;
+    if(!confirm("ยืนยันการลบงานนี้?")) return;
+    tasks = tasks.filter(t=>t.id!==editingId);
+    await persist();
+    closeModal();
+    renderAll();
+    toast("ลบงานแล้ว");
+  }
+
+  function exportJSON(){
+    const blob = new Blob([JSON.stringify(tasks, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "factory_tasks_export.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function bindUI(){
+    $$(".view-switch button").forEach(btn=>{
+      btn.onclick = ()=>{
+        $$(".view-switch button").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        currentView = btn.dataset.view;
+        $("#boardView").style.display = currentView === "board" ? "flex" : "none";
+        $("#listView").style.display = currentView === "list" ? "block" : "none";
+        renderAll();
+      };
+    });
+    $("#newTaskBtn").onclick = ()=> openModal(null);
+    $("#modalClose").onclick = closeModal;
+    $("#cancelBtn").onclick = closeModal;
+    $("#saveBtn").onclick = saveTask;
+    $("#deleteBtn").onclick = deleteTask;
+    $("#exportBtn").onclick = exportJSON;
+    $("#overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") closeModal(); });
+    $("#searchInput").addEventListener("input", e=>{ filters.search = e.target.value; renderAll(); });
+    $("#clearFilters").onclick = ()=>{
+      filters = { status:null, priority:null, department:null, category:null, search:"" };
+      $("#searchInput").value = "";
+      renderAll();
+    };
+    document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
+  }
+
+  async function init(){
+    bindUI();
+    await loadTasks();
+    renderAll();
+    if(!storageOK){
+      toast("โหมดออฟไลน์: ข้อมูลจะไม่ถูกบันทึกถาวร — ใช้ Export JSON เพื่อสำรองข้อมูล");
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
