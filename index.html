@@ -4,34 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Factory Ops Board — ระบบติดตามงานโรงงาน</title>
+<script src="./config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#14181d;
-    --panel:#1b2027;
-    --panel-2:#20262e;
-    --line:#2b323c;
-    --line-soft:#242a32;
-    --text:#e8eaed;
-    --muted:#8b95a1;
-    --muted-2:#5f6874;
-    --urgent:#e5484d;
-    --urgent-bg:rgba(229,72,77,.12);
-    --high:#f5a623;
-    --high-bg:rgba(245,166,35,.12);
-    --normal:#3fb950;
-    --normal-bg:rgba(63,185,80,.12);
-    --steel:#4a9eff;
-    --steel-bg:rgba(74,158,255,.12);
-    --violet:#a371f7;
-    --violet-bg:rgba(163,113,247,.12);
+    --bg:#f7f5ef;
+    --panel:#fffefa;
+    --panel-2:#f0eee6;
+    --line:#ded9cc;
+    --line-soft:#ebe7dd;
+    --text:#243044;
+    --muted:#5f6b7c;
+    --muted-2:#8590a0;
+    --urgent:#c93f45;
+    --urgent-bg:#fbe8e8;
+    --high:#b76b05;
+    --high-bg:#fff1d7;
+    --normal:#247745;
+    --normal-bg:#e5f5ea;
+    --steel:#2869b5;
+    --steel-bg:#e6f0fd;
+    --violet:#7652b8;
+    --violet-bg:#eee8fa;
     --mono:'IBM Plex Mono',monospace;
     --cond:'IBM Plex Sans Condensed',sans-serif;
     --sans:'IBM Plex Sans Thai','IBM Plex Mono',sans-serif;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;-webkit-font-smoothing:antialiased;}
   ::selection{background:var(--steel-bg);color:var(--text);}
   ::-webkit-scrollbar{height:10px;width:10px;}
   ::-webkit-scrollbar-track{background:transparent;}
@@ -42,7 +44,7 @@
   .topbar{
     display:flex;align-items:center;gap:16px;
     padding:14px 20px;border-bottom:1px solid var(--line);
-    background:linear-gradient(180deg,#171b21,#14181d);
+    background:linear-gradient(180deg,#fffefa,#f7f5ef);
     position:sticky;top:0;z-index:40;
   }
   .brand{display:flex;align-items:center;gap:10px;}
@@ -51,23 +53,23 @@
     border:1px solid var(--steel);display:flex;align-items:center;justify-content:center;
     font-family:var(--mono);font-weight:600;color:var(--steel);font-size:13px;
   }
-  .brand-text h1{font-family:var(--cond);font-size:16px;margin:0;letter-spacing:.3px;font-weight:700;}
-  .brand-text .sub{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.4px;}
+  .brand-text h1{font-family:var(--cond);font-size:20px;margin:0;letter-spacing:.3px;font-weight:700;}
+  .brand-text .sub{font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:.4px;}
   .topbar .spacer{flex:1;}
   .view-switch{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:3px;}
   .view-switch button{
     border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:6px;
-    font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:.15s;
+    font-family:var(--sans);font-size:15px;font-weight:500;cursor:pointer;transition:.15s;
   }
   .view-switch button.active{background:var(--panel);color:var(--text);box-shadow:0 1px 0 var(--line);}
   .btn{
     display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel-2);
-    color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;
+    color:var(--text);padding:9px 15px;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;
     font-family:var(--sans);transition:.15s;
   }
   .btn:hover{border-color:var(--muted-2);}
-  .btn-primary{background:var(--steel);border-color:var(--steel);color:#0b1420;font-weight:600;}
-  .btn-primary:hover{background:#63aeff;}
+  .btn-primary{background:var(--steel);border-color:var(--steel);color:white;font-weight:600;}
+  .btn-primary:hover{background:#1e5ca3;}
   .btn-ghost{background:transparent;}
   .btn-danger{color:var(--urgent);}
 
@@ -85,7 +87,7 @@
   .chip-list{display:flex;flex-direction:column;gap:2px;}
   .chip{
     display:flex;align-items:center;justify-content:space-between;gap:8px;
-    padding:7px 8px;border-radius:6px;font-size:12.5px;color:var(--muted);cursor:pointer;
+    padding:8px 9px;border-radius:6px;font-size:14px;color:var(--muted);cursor:pointer;
     border:1px solid transparent;transition:.12s;
   }
   .chip:hover{background:var(--panel-2);color:var(--text);}
@@ -96,7 +98,7 @@
     display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);
     border-radius:8px;padding:8px 10px;margin-bottom:16px;
   }
-  .search-box input{background:transparent;border:none;outline:none;color:var(--text);font-size:12.5px;width:100%;font-family:var(--sans);}
+  .search-box input{background:transparent;border:none;outline:none;color:var(--text);font-size:14px;width:100%;font-family:var(--sans);}
   .search-box input::placeholder{color:var(--muted-2);}
 
   .main{flex:1;min-width:0;padding:18px 20px 60px;}
@@ -105,8 +107,8 @@
     flex:1;min-width:130px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
     padding:12px 14px;position:relative;overflow:hidden;
   }
-  .stat-card .n{font-family:var(--cond);font-size:26px;font-weight:700;line-height:1;}
-  .stat-card .l{font-size:11px;color:var(--muted);margin-top:4px;}
+  .stat-card .n{font-family:var(--cond);font-size:31px;font-weight:700;line-height:1;}
+  .stat-card .l{font-size:13px;color:var(--muted);margin-top:5px;}
   .stat-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
   .stat-card.total::before{background:var(--steel);}
   .stat-card.urgent::before{background:var(--urgent);}
@@ -124,7 +126,7 @@
     display:flex;align-items:center;gap:8px;padding:12px 12px 10px;border-bottom:1px solid var(--line-soft);
   }
   .col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-  .col-head .name{font-family:var(--cond);font-weight:700;font-size:13.5px;flex:1;}
+  .col-head .name{font-family:var(--cond);font-weight:700;font-size:16px;flex:1;}
   .col-head .cnt{font-family:var(--mono);font-size:11px;color:var(--muted-2);background:var(--panel-2);padding:2px 7px;border-radius:20px;}
   .col-body{padding:10px;display:flex;flex-direction:column;gap:9px;overflow-y:auto;}
   .col-add{margin:0 10px 12px;padding:8px;border:1px dashed var(--line);border-radius:8px;text-align:center;
@@ -147,9 +149,9 @@
   .ticket-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
   .ticket-id{font-family:var(--mono);font-size:10px;color:var(--muted-2);letter-spacing:.4px;}
   .ticket-cat{font-size:9.5px;color:var(--muted-2);font-family:var(--mono);}
-  .ticket-title{font-size:12.5px;line-height:1.4;color:var(--text);margin-bottom:8px;font-weight:500;}
+  .ticket-title{font-size:15px;line-height:1.45;color:var(--text);margin-bottom:9px;font-weight:600;}
   .ticket-meta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
-  .tag{font-size:10px;padding:2.5px 7px;border-radius:5px;font-family:var(--mono);letter-spacing:.2px;}
+  .tag{font-size:11px;padding:3px 7px;border-radius:5px;font-family:var(--mono);letter-spacing:.2px;}
   .tag.dept{background:var(--panel);border:1px solid var(--line);color:var(--muted);}
   .tag.pr-urgent{background:var(--urgent-bg);color:var(--urgent);}
   .tag.pr-high{background:var(--high-bg);color:var(--high);}
@@ -159,12 +161,18 @@
     width:20px;height:20px;border-radius:50%;background:var(--steel-bg);border:1px solid var(--steel);
     display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--steel);font-family:var(--mono);
   }
-  .due{font-size:10.5px;font-family:var(--mono);color:var(--muted);}
+  .due{font-size:11.5px;font-family:var(--mono);color:var(--muted);}
   .due.overdue{color:var(--urgent);font-weight:600;}
   .due.soon{color:var(--high);}
 
   /* ===== List view ===== */
   .list-wrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .list-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--panel-2);}
+  .list-toolbar .label{font:12px var(--mono);letter-spacing:.6px;text-transform:uppercase;color:var(--muted);}
+  .list-toolbar select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:7px 10px;border-radius:6px;font:14px var(--sans);}
+  .assignee-group{border-bottom:1px solid var(--line);}.assignee-group:last-child{border-bottom:0}
+  .assignee-head{display:flex;align-items:center;gap:9px;padding:13px 14px;background:#f4f0e7;font-size:14px;font-weight:700;}.assignee-head .count{font:11px var(--mono);color:var(--muted);}
+  .task-tree{padding:7px 11px 11px;}.tree-row{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(120px,.6fr) 130px 105px 112px;align-items:center;gap:12px;padding:11px 10px;border-radius:7px;font-size:14px;cursor:pointer;}.tree-row:hover{background:var(--panel-2)}.tree-row.sub-row{margin-left:29px;border-left:2px solid #d6e3f4;border-radius:0;padding-left:16px;}.tree-main{display:flex;align-items:center;gap:8px;min-width:0;}.tree-main strong{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tree-id{font:11px var(--mono);color:var(--muted-2);white-space:nowrap}.tree-sub-icon{color:var(--steel);font:15px var(--mono)}.tree-col{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.group-all .assignee-head{display:none}
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   thead th{
     text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;
@@ -192,15 +200,15 @@
     box-shadow:0 20px 60px rgba(0,0,0,.5);
   }
   .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);}
-  .modal-head h3{margin:0;font-family:var(--cond);font-size:16px;font-weight:700;}
+  .modal-head h3{margin:0;font-family:var(--cond);font-size:20px;font-weight:700;}
   .modal-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:4px;}
   .modal-body{padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .field{display:flex;flex-direction:column;gap:5px;}
   .field.full{grid-column:1/-1;}
-  .field label{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.3px;}
+  .field label{font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:.3px;}
   .field input,.field select,.field textarea{
     background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:8px 10px;
-    color:var(--text);font-size:13px;font-family:var(--sans);outline:none;
+    color:var(--text);font-size:15px;font-family:var(--sans);outline:none;
   }
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--steel);}
   .field textarea{resize:vertical;min-height:60px;}
@@ -214,10 +222,28 @@
     border-radius:8px;font-size:12.5px;opacity:0;pointer-events:none;transition:.25s;z-index:200;font-family:var(--mono);
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .icon-btn{position:relative;width:36px;height:36px;padding:0;justify-content:center;font-size:16px;}
+  .badge{position:absolute;right:-4px;top:-5px;min-width:17px;height:17px;padding:1px 4px;border-radius:10px;background:var(--urgent);color:white;font:10px var(--mono);display:none;}
+  .badge.show{display:block;}
+  .account{font-size:12px;color:var(--muted);max-width:185px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .detail-modal{max-width:760px;}
+  .detail-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;padding:0 20px 18px;}
+  .detail-panel{border:1px solid var(--line);border-radius:9px;background:var(--panel-2);padding:12px;}
+  .detail-panel h4{font-family:var(--mono);font-size:10px;letter-spacing:.8px;color:var(--muted);margin:0 0 10px;text-transform:uppercase;}
+  .subtask{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:12px;}
+  .subtask:last-child{border-bottom:0}.subtask input{accent-color:var(--steel)}.subtask.done span{text-decoration:line-through;color:var(--muted)}
+  .subtask button{margin-left:auto;background:none;color:var(--muted);border:0;cursor:pointer}.subtask select{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:5px;padding:4px;font:10px var(--mono)}.add-inline{display:flex;gap:6px;margin-top:9px}.add-inline input{min-width:0;flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--text);font-family:var(--sans);font-size:12px;}
+  .subtask-add{flex-wrap:wrap}.subtask-add #subtaskInput{flex-basis:100%}.subtask-add select,.subtask-add input{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--text);font:11px var(--sans);min-width:0}.subtask-add #subtaskAssignee{flex:1}.subtask-meta{font:10px var(--mono);color:var(--muted-2);margin-left:auto;white-space:nowrap}
+  .attachment{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:12px;}.attachment a{color:var(--steel);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-help{font-size:10.5px;color:var(--muted);margin-top:5px;}
+  .activity{max-height:250px;overflow:auto}.activity-item{display:grid;grid-template-columns:8px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:11.5px;line-height:1.45}.activity-item:last-child{border-bottom:0}.activity-dot{width:7px;height:7px;border-radius:50%;background:var(--steel);margin-top:5px}.activity-time{font:10px var(--mono);color:var(--muted-2);margin-top:2px}
+  .notification-menu{position:fixed;right:20px;top:58px;width:340px;max-height:420px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 45px rgba(0,0,0,.45);z-index:70;padding:8px;display:none}.notification-menu.show{display:block}.notification-menu h4{font:11px var(--mono);color:var(--muted);letter-spacing:.8px;margin:8px}.notice{padding:10px;border-bottom:1px solid var(--line-soft);font-size:12px;cursor:pointer}.notice:hover{background:var(--panel-2)}.notice.unread{border-left:2px solid var(--steel)}
+  .login-gate{position:fixed;inset:0;background:rgba(36,48,68,.25);backdrop-filter:blur(5px);z-index:300;display:none;align-items:center;justify-content:center;padding:20px}.login-gate.show{display:flex}.login-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px;box-shadow:0 20px 55px rgba(36,48,68,.18)}.login-card h2{font-family:var(--cond);font-size:25px;margin:12px 0 5px}.login-card p{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5}.login-card input{width:100%;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:11px;margin:6px 0 12px;font:15px var(--sans)}.auth-tabs{display:flex;gap:4px;padding:4px;margin:0 0 19px;border-radius:9px;background:var(--panel-2)}.auth-tabs button{flex:1;border:0;border-radius:6px;padding:9px;background:transparent;color:var(--muted);font:600 14px var(--sans);cursor:pointer}.auth-tabs button.active{background:var(--panel);color:var(--steel);box-shadow:0 1px 3px rgba(36,48,68,.12)}.auth-label{display:block;font:12px var(--mono);color:var(--muted);margin-bottom:2px}.auth-confirm{display:none}.auth-confirm.show{display:block}.auth-message{display:none;margin:12px 0 0;padding:10px;border-radius:7px;background:var(--steel-bg);color:var(--steel);font-size:13px;line-height:1.45}.auth-message.show{display:block}.auth-resend{display:none;margin-top:10px;width:100%;justify-content:center}.auth-resend.show{display:inline-flex}.auth-foot{margin-top:14px!important;font-size:12px!important}
 
   @media(max-width:860px){
     .sidebar{display:none;}
     .modal-body{grid-template-columns:1fr;}
+    .detail-grid{grid-template-columns:1fr;}
+    .tree-row{grid-template-columns:1fr 100px;}.tree-row .tree-col:nth-of-type(n+2){display:none;}
   }
 </style>
 </head>
@@ -237,8 +263,11 @@
     <button data-view="list">List</button>
   </div>
   <button class="btn" id="exportBtn">Export JSON</button>
+  <span class="account" id="accountLabel"></span>
+  <button class="btn icon-btn" id="notifyBtn" aria-label="การแจ้งเตือน">🔔<span class="badge" id="notifyBadge">0</span></button>
   <button class="btn btn-primary" id="newTaskBtn">+ งานใหม่</button>
 </div>
+<div class="notification-menu" id="notificationMenu"><h4>การแจ้งเตือน</h4><div id="notificationList"></div></div>
 
 <div class="layout">
   <div class="sidebar">
@@ -260,6 +289,10 @@
       <div class="chip-list" id="filterDept"></div>
     </div>
     <div class="side-group">
+      <h4>ผู้รับผิดชอบ</h4>
+      <div class="chip-list" id="filterAssignee"></div>
+    </div>
+    <div class="side-group">
       <h4>หมวดหมู่</h4>
       <div class="chip-list" id="filterCategory"></div>
     </div>
@@ -269,14 +302,10 @@
   <div class="main">
     <div class="stats-row" id="statsRow"></div>
     <div id="boardView" class="board"></div>
-    <div id="listView" class="list-wrap" style="display:none;">
-      <table>
-        <thead><tr>
-          <th>Task</th><th>หมวดหมู่</th><th>ผู้รับผิดชอบ</th><th>แผนก</th><th>ความสำคัญ</th><th>สถานะ</th><th>กำหนดเสร็จ</th>
-        </tr></thead>
-        <tbody id="listBody"></tbody>
-      </table>
-    </div>
+  <div id="listView" class="list-wrap" style="display:none;">
+      <div class="list-toolbar"><span class="label">รายการงานแบบลำดับชั้น</span><label class="label">จัดกลุ่ม <select id="groupBy"><option value="assignee">ตามผู้รับผิดชอบ</option><option value="none">ไม่จัดกลุ่ม</option></select></label></div>
+      <div id="listBody"></div>
+  </div>
   </div>
 </div>
 
@@ -314,7 +343,7 @@
       </div>
       <div class="field">
         <label>ผู้รับผิดชอบ</label>
-        <input type="text" id="f-assignee" placeholder="name@factory.com">
+        <input type="email" id="f-assignee" placeholder="name@factory.com">
       </div>
       <div class="field">
         <label>แผนก</label>
@@ -325,12 +354,18 @@
         <input type="text" id="f-location">
       </div>
       <div class="field">
+        <label>วันเริ่มงาน</label>
+        <input type="date" id="f-start">
+      </div>
+      <div class="field">
         <label>กำหนดเสร็จ</label>
         <input type="date" id="f-due">
       </div>
       <div class="field full">
-        <label>Link เอกสาร/รูปภาพ (OneDrive)</label>
-        <input type="text" id="f-link" placeholder="https://onedrive.live.com/...">
+        <label>แนบรูป/เอกสาร หรือ Link เอกสาร</label>
+        <input type="file" id="f-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+        <input type="url" id="f-link" placeholder="https://... (ลิงก์ไฟล์เพิ่มเติม)">
+        <div class="file-help">ไฟล์จะถูกเก็บในเบราว์เซอร์เครื่องนี้ เพื่อความปลอดภัยไฟล์ขนาดใหญ่ควรอัปโหลดไปยังระบบจัดเก็บกลางแล้วใส่ลิงก์</div>
       </div>
       <div class="field full">
         <label>หมายเหตุ / รายละเอียด CAPA</label>
@@ -343,10 +378,15 @@
       <button class="btn btn-ghost" id="cancelBtn">ยกเลิก</button>
       <button class="btn btn-primary" id="saveBtn">บันทึก</button>
     </div>
+    <div class="detail-grid" id="taskDetail" style="display:none;">
+      <div class="detail-panel"><h4>งานย่อย</h4><div id="subtaskList"></div><div class="add-inline subtask-add"><input id="subtaskInput" placeholder="ชื่องานย่อย..."><select id="subtaskStatus"><option value="1">To Do</option><option value="2">In Progress</option><option value="3">Pending</option><option value="4">Complete</option></select><input id="subtaskAssignee" type="email" placeholder="ผู้รับผิดชอบ"><input id="subtaskDue" type="date"><button class="btn" id="addSubtaskBtn">เพิ่ม</button></div></div>
+      <div class="detail-panel"><h4>ประวัติกิจกรรม</h4><div class="activity" id="activityList"></div></div>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="login-gate" id="loginGate"><div class="login-card"><div class="brand-mark">FO</div><h2 id="authTitle">เข้าสู่ระบบ</h2><p id="authIntro">ใช้บัญชีอีเมลและรหัสผ่านของคุณเพื่อเข้าถึง Factory Ops Board</p><div class="auth-tabs"><button type="button" class="active" id="authLoginTab">เข้าสู่ระบบ</button><button type="button" id="authSignupTab">สมัครสมาชิก</button></div><label class="auth-label" for="loginEmail">อีเมลที่ทำงาน</label><input type="email" id="loginEmail" autocomplete="email" placeholder="you@factory.com"><label class="auth-label" for="loginPassword">รหัสผ่าน</label><input type="password" id="loginPassword" autocomplete="current-password" placeholder="อย่างน้อย 8 ตัวอักษร"><div class="auth-confirm" id="authConfirm"><label class="auth-label" for="confirmPassword">ยืนยันรหัสผ่าน</label><input type="password" id="confirmPassword" autocomplete="new-password" placeholder="กรอกรหัสผ่านอีกครั้ง"></div><button class="btn btn-primary" style="width:100%;justify-content:center;" id="authSubmitBtn">เข้าสู่ระบบ</button><div class="auth-message" id="authMessage"></div><button class="btn auth-resend" id="resendConfirmBtn">ส่งอีเมลยืนยันอีกครั้ง</button><p class="auth-foot">เมื่อสมัคร ระบบจะส่งลิงก์ยืนยันไปยังอีเมลของคุณก่อนเริ่มใช้งาน</p></div></div>
 
 <script>
 (function(){
@@ -386,10 +426,18 @@
   ];
 
   let tasks = [];
-  let filters = { status:null, priority:null, department:null, category:null, search:"" };
+  let filters = { status:null, priority:null, department:null, category:null, assignee:null, search:"" };
   let currentView = "board";
+  let groupBy = "assignee";
   let editingId = null;
   let storageOK = true;
+  let currentUser = null;
+  let notifications = [];
+  let cloud = null;
+  let realtimeChannel = null;
+  let appConfig = {};
+  let authMode = "signin";
+  let pendingConfirmationEmail = "";
 
   const $ = (sel,root)=> (root||document).querySelector(sel);
   const $$ = (sel,root)=> Array.from((root||document).querySelectorAll(sel));
@@ -411,25 +459,59 @@
   }
 
   async function loadTasks(){
+    if(cloud){
+      const {data,error}=await cloud.from("tasks").select("id,data").order("updated_at",{ascending:false});
+      if(error) throw error;
+      tasks=(data||[]).map(row=>({...row.data,id:row.id})); migrateTasks(); return;
+    }
     try{
-      const res = await window.storage.get("factory-tasks", false);
-      if(res && res.value){
-        tasks = JSON.parse(res.value);
-        return;
-      }
+      const saved = window.localStorage.getItem("factory-ops-clickup-tasks");
+      if(saved){ tasks = JSON.parse(saved); migrateTasks(); return; }
     }catch(e){ /* key doesn't exist yet */ }
     tasks = SEED.slice();
+    migrateTasks();
     await persist();
   }
 
-  async function persist(){
+  async function persist(task){
     try{
-      const result = await window.storage.set("factory-tasks", JSON.stringify(tasks), false);
-      if(!result){ storageOK = false; }
+      if(cloud){
+        // Save only the changed Main Task. This prevents one user's older screen
+        // from overwriting colleagues' unrelated updates.
+        if(!task) return;
+        const {error}=await cloud.from("tasks").upsert({id:task.id,data:task,updated_by:currentUser},{onConflict:"id"});
+        if(error) throw error;
+        return;
+      }
+      window.localStorage.setItem("factory-ops-clickup-tasks", JSON.stringify(tasks));
+      window.localStorage.setItem("factory-ops-clickup-notifications", JSON.stringify(notifications));
     }catch(e){
       storageOK = false;
       console.error("storage error", e);
     }
+  }
+
+  function migrateTasks(){
+    tasks.forEach(t=>{
+      t.subtasks = Array.isArray(t.subtasks) ? t.subtasks : [];
+      t.subtasks=t.subtasks.map(s=>({id:s.id||crypto.randomUUID(),title:s.title||"งานย่อย",status:s.status||(s.done?"4":"1"),assignee:s.assignee||t.assignee||"",due:s.due||"",createdAt:s.createdAt||new Date().toISOString()}));
+      t.attachments = Array.isArray(t.attachments) ? t.attachments : (t.link ? [{name:"ลิงก์เอกสาร",url:t.link,type:"link"}] : []);
+      t.activity = Array.isArray(t.activity) ? t.activity : [{at:new Date().toISOString(),user:"system",text:"นำเข้ารายการงาน"}];
+      delete t.parentId;
+      t.start = t.start || "";
+    });
+    try { notifications = JSON.parse(window.localStorage.getItem("factory-ops-clickup-notifications") || "[]"); } catch(e) { notifications=[]; }
+  }
+  function activity(t,text){
+    const item={at:new Date().toISOString(),user:currentUser||"system",text};
+    t.activity.unshift(item);
+    notifications.unshift({id:Date.now()+Math.random(),taskId:t.id,text:`${item.user}: ${text} — ${t.title}`,at:item.at,read:false});
+    if(cloud) cloud.functions.invoke("notify-activity",{body:{taskId:t.id,title:t.title,assignee:t.assignee,actor:item.user,text:item.text}}).catch(()=>{});
+  }
+  function formatTime(iso){ return new Date(iso).toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"}); }
+  function readAttachments(files){
+    if(cloud) return Promise.all(files.map(async f=>{const {data:{user}}=await cloud.auth.getUser();const path=`${user.id}/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;const {error}=await cloud.storage.from("attachments").upload(path,f);if(error)throw error;const {data}=cloud.storage.from("attachments").getPublicUrl(path);return {name:f.name,type:f.type||"file",size:f.size,url:data.publicUrl,path,addedAt:new Date().toISOString()};}));
+    return Promise.all(files.map(f=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve({name:f.name,type:f.type||"file",size:f.size,data:r.result,addedAt:new Date().toISOString()});r.onerror=reject;r.readAsDataURL(f);})));
   }
 
   function initials(email){
@@ -463,6 +545,7 @@
       if(filters.priority && t.priority !== filters.priority) return false;
       if(filters.department && t.department !== filters.department) return false;
       if(filters.category && t.category !== filters.category) return false;
+      if(filters.assignee && (t.assignee||"") !== filters.assignee) return false;
       if(filters.search){
         const s = filters.search.toLowerCase();
         const hay = (t.title+" "+t.id+" "+t.assignee+" "+t.location).toLowerCase();
@@ -473,7 +556,7 @@
   }
 
   function renderSidebar(){
-    const list = filteredTasks();
+    const list = filteredTasks().sort((a,b)=>(a.start||"9999-12-31").localeCompare(b.start||"9999-12-31"));
 
     function buildChips(container, items, key, getLabel, getId){
       const el = $(container);
@@ -496,6 +579,8 @@
     buildChips("#filterStatus", STATUSES, "status", s=>s.name, s=>s.id);
     buildChips("#filterPriority", PRIORITIES, "priority", p=>p.label, p=>p.id);
     buildChips("#filterDept", DEPARTMENTS.map(d=>({d})), "department", x=>x.d, x=>x.d);
+    const assignees=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
+    buildChips("#filterAssignee", assignees.map(a=>({a})), "assignee", x=>x.a, x=>x.a);
     buildChips("#filterCategory", CATEGORIES.map(c=>({c})), "category", x=>x.c, x=>x.c);
   }
 
@@ -523,11 +608,14 @@
         <div class="ticket-title">${escapeHTML(t.title)}</div>
         <div class="ticket-meta">
           <span class="tag pr-${priorityClass(t.priority)}">${priorityLabel(t.priority)}</span>
+          <span class="status-pill st-${t.status}">${STATUSES.find(s=>s.id===t.status).name}</span>
           <span class="tag dept">${t.department}</span>
+          ${t.subtasks && t.subtasks.length ? `<span class="tag dept">☑ ${t.subtasks.filter(s=>s.status==="4").length}/${t.subtasks.length}</span>` : ""}
+          ${t.attachments && t.attachments.length ? `<span class="tag dept">📎 ${t.attachments.length}</span>` : ""}
         </div>
         <div class="ticket-foot">
           <span class="avatar">${initials(t.assignee)}</span>
-          <span class="due ${dc}">${fmtDue(t.due)}</span>
+          <span class="due ${dc}">เริ่ม ${fmtDue(t.start)} · ${fmtDue(t.due)}</span>
         </div>
       </div>`;
   }
@@ -537,50 +625,43 @@
   }
 
   function renderBoard(){
-    const list = filteredTasks();
+    const list = filteredTasks().sort((a,b)=>(a.start||"9999-12-31").localeCompare(b.start||"9999-12-31"));
     const el = $("#boardView");
     el.innerHTML = "";
-    STATUSES.forEach(st=>{
-      const items = list.filter(t=>t.status===st.id);
-      const col = document.createElement("div");
-      col.className = "col";
-      col.dataset.status = st.id;
-      col.innerHTML = `
-        <div class="col-head">
-          <span class="col-dot" style="background:${st.color}"></span>
-          <span class="name">${st.name}</span>
-          <span class="cnt">${items.length}</span>
-        </div>
-        <div class="col-body">${items.map(ticketHTML).join("") || `<div class="empty" style="padding:24px 6px;"><div class="big">ไม่มีงาน</div>ลากบัตรงานมาวางที่นี่</div>`}</div>
-      `;
-      el.appendChild(col);
-    });
+    const col = document.createElement("div");
+    col.className = "col"; col.style.width="min(100%, 920px)"; col.style.maxHeight="none";
+    col.innerHTML=`<div class="col-head"><span class="col-dot" style="background:var(--steel)"></span><span class="name">Main Tasks — เรียงตามวันเริ่มงาน</span><span class="cnt">${list.length}</span></div><div class="col-body">${list.map(ticketHTML).join("")||`<div class="empty"><div class="big">ไม่มีงานที่ตรงกับตัวกรอง</div></div>`}</div>`;
+    el.appendChild(col);
     attachCardEvents();
-    attachDragEvents();
   }
 
   function renderList(){
     const list = filteredTasks();
     const body = $("#listBody");
     if(!list.length){
-      body.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="big">ไม่พบงานที่ตรงกับตัวกรอง</div>ลองล้างตัวกรองหรือค้นหาคำอื่น</div></td></tr>`;
+      body.innerHTML = `<div class="empty"><div class="big">ไม่พบงานที่ตรงกับตัวกรอง</div>ลองล้างตัวกรองหรือค้นหาคำอื่น</div>`;
       return;
     }
-    body.innerHTML = list.map(t=>{
+    const row = (t,isSub=false,parentId="")=>{
       const dc = dueClass(t.due, t.status);
       const st = STATUSES.find(s=>s.id===t.status);
-      return `<tr data-id="${t.id}">
-        <td><strong style="font-weight:500;">${escapeHTML(t.title)}</strong><div style="color:var(--muted-2);font-family:var(--mono);font-size:10px;margin-top:2px;">${t.id}</div></td>
-        <td style="color:var(--muted);">${t.category}</td>
-        <td>${t.assignee}</td>
-        <td style="color:var(--muted);">${t.department}</td>
-        <td><span class="tag pr-${priorityClass(t.priority)}">${priorityLabel(t.priority)}</span></td>
-        <td><span class="status-pill st-${t.status}">${st.name}</span></td>
-        <td class="due ${dc}">${fmtDue(t.due)}</td>
-      </tr>`;
+      return `<div class="tree-row ${isSub?"sub-row":""}" data-id="${isSub?parentId:t.id}">
+        <div class="tree-main">${isSub?'<span class="tree-sub-icon">↳</span>':'<span class="tree-id">MAIN</span>'}<div style="min-width:0"><strong>${escapeHTML(t.title)}</strong><div class="tree-id">${isSub?escapeHTML(t.assignee||"ยังไม่กำหนดผู้รับผิดชอบ"):`${t.id} · ${t.subtasks.filter(s=>s.status==="4").length}/${t.subtasks.length} งานย่อย`}</div></div></div>
+        <div class="tree-col">${isSub?"—":`<span class="tag pr-${priorityClass(t.priority)}">${priorityLabel(t.priority)}</span>`}</div>
+        <div class="tree-col"><span class="status-pill st-${t.status}">${st.name}</span></div>
+        <div class="tree-col">${isSub?fmtDue(t.due):escapeHTML(t.department)}</div>
+        <div class="due ${dc}">${fmtDue(t.due)}</div>
+      </div>`;
+    };
+    const groups=groupBy==="assignee" ? [...new Set(list.map(t=>t.assignee||"ยังไม่กำหนดผู้รับผิดชอบ"))] : ["ทั้งหมด"];
+    body.innerHTML=groups.map(name=>{
+      const mains=groupBy==="assignee"?list.filter(t=>(t.assignee||"ยังไม่กำหนดผู้รับผิดชอบ")===name):list;
+      const tree=mains.map(t=>row(t)+t.subtasks.map(s=>row(s,true,t.id)).join("")).join("");
+      const count=mains.length+mains.reduce((sum,t)=>sum+t.subtasks.length,0);
+      return `<section class="assignee-group ${groupBy==='none'?'group-all':''}"><div class="assignee-head"><span class="avatar">${initials(name)}</span>${escapeHTML(name)} <span class="count">${count} รายการ</span></div><div class="task-tree">${tree}</div></section>`;
     }).join("");
-    $$("#listBody tr").forEach(row=>{
-      row.onclick = ()=> openModal(row.dataset.id);
+    $$("#listBody [data-id]").forEach(item=>{
+      item.onclick = ()=> openModal(item.dataset.id);
     });
   }
 
@@ -616,8 +697,10 @@
         if(!draggedId) return;
         const task = tasks.find(t=>t.id===draggedId);
         if(task && task.status !== col.dataset.status){
+          const previous = STATUSES.find(s=>s.id===task.status).name;
           task.status = col.dataset.status;
-          await persist();
+          activity(task,`เปลี่ยนสถานะจาก ${previous} เป็น ${STATUSES.find(s=>s.id===col.dataset.status).name}`);
+          await persist(task);
           renderAll();
           toast(`ย้าย ${draggedId} ไปยัง ${STATUSES.find(s=>s.id===col.dataset.status).name}`);
         }
@@ -628,6 +711,15 @@
   function populateSelect(id, options){
     const el = $(id);
     el.innerHTML = options.map(o=>`<option value="${o}">${o}</option>`).join("");
+  }
+
+  function renderTaskDetail(t){
+    const box=$("#taskDetail"); box.style.display=t?"grid":"none"; if(!t)return;
+    const attach=(t.attachments||[]).map(a=>`<div class="attachment">📎 ${a.data?`<a href="${a.data}" download="${escapeHTML(a.name)}">${escapeHTML(a.name)}</a>`:`<a target="_blank" rel="noopener" href="${escapeHTML(a.url||"#")}">${escapeHTML(a.name)}</a>`}</div>`).join("");
+    $("#subtaskList").innerHTML=(t.subtasks.map((s,i)=>`<div class="subtask ${s.status==="4"?"done":""}"><select data-sub-status="${i}">${STATUSES.map(st=>`<option value="${st.id}" ${s.status===st.id?"selected":""}>${st.name}</option>`).join("")}</select><span>${escapeHTML(s.title)}</span><span class="subtask-meta">${escapeHTML(s.assignee||"ไม่ระบุ")} · ${fmtDue(s.due)}</span><button data-remove-sub="${i}">✕</button></div>`).join("") || '<div class="file-help">ยังไม่มีงานย่อย</div>')+`<h4 style="margin-top:15px;">ไฟล์แนบ (${(t.attachments||[]).length})</h4>`+(attach||'<div class="file-help">ยังไม่มีไฟล์แนบ</div>');
+    $("#activityList").innerHTML=t.activity.map(a=>`<div class="activity-item"><i class="activity-dot"></i><div><strong>${escapeHTML(a.user)}</strong> ${escapeHTML(a.text)}<div class="activity-time">${formatTime(a.at)}</div></div></div>`).join("");
+    $$("[data-sub-status]").forEach(c=>c.onchange=async()=>{const s=t.subtasks[+c.dataset.subStatus],before=STATUSES.find(st=>st.id===s.status).name;s.status=c.value;activity(t,`เปลี่ยนสถานะงานย่อย “${s.title}” จาก ${before} เป็น ${STATUSES.find(st=>st.id===s.status).name}`);await persist(t);renderTaskDetail(t);renderAll();});
+    $$("[data-remove-sub]").forEach(b=>b.onclick=async()=>{const s=t.subtasks.splice(+b.dataset.removeSub,1)[0];activity(t,`ลบงานย่อย: ${s.title}`);await persist(t);renderTaskDetail(t);renderAll();});
   }
 
   function openModal(id){
@@ -646,9 +738,12 @@
     $("#f-assignee").value = t ? t.assignee : "";
     $("#f-department").value = t ? t.department : DEPARTMENTS[0];
     $("#f-location").value = t ? t.location : "";
+    $("#f-start").value = t ? t.start : "";
     $("#f-due").value = t ? t.due : "";
     $("#f-link").value = t ? t.link : "";
     $("#f-note").value = t ? t.note : "";
+    $("#f-files").value = "";
+    renderTaskDetail(t);
 
     $("#overlay").classList.add("show");
   }
@@ -671,18 +766,28 @@
       location: $("#f-location").value.trim(),
       due: $("#f-due").value,
       link: $("#f-link").value.trim(),
-      note: $("#f-note").value.trim()
+      note: $("#f-note").value.trim(),
+      start: $("#f-start").value
     };
     if(editingId){
       const t = tasks.find(x=>x.id===editingId);
+      const changes=Object.keys(data).filter(k=>String(t[k]||"")!==String(data[k]||""));
       Object.assign(t, data);
+      const files=Array.from($("#f-files").files||[]);
+      if(files.length){ t.attachments=t.attachments||[]; t.attachments.push(...await readAttachments(files)); }
+      if(data.link && !(t.attachments||[]).some(a=>a.url===data.link)) t.attachments.push({name:"ลิงก์เอกสาร",url:data.link,type:"link"});
+      if(changes.length||files.length) activity(t,`แก้ไขข้อมูล${changes.length?": "+changes.join(", "):""}${files.length?` และแนบไฟล์ ${files.length} รายการ`:""}`);
       toast("บันทึกการแก้ไขแล้ว");
     }else{
       data.id = nextId();
+      data.subtasks=[]; data.attachments=[]; data.activity=[];
+      const files=Array.from($("#f-files").files||[]); data.attachments.push(...await readAttachments(files));
+      if(data.link) data.attachments.push({name:"ลิงก์เอกสาร",url:data.link,type:"link"});
+      activity(data,"สร้างงานใหม่และแจ้งผู้เกี่ยวข้อง");
       tasks.push(data);
       toast("เพิ่มงานใหม่แล้ว: " + data.id);
     }
-    await persist();
+    await persist(editingId ? tasks.find(x=>x.id===editingId) : data);
     closeModal();
     renderAll();
   }
@@ -690,8 +795,13 @@
   async function deleteTask(){
     if(!editingId) return;
     if(!confirm("ยืนยันการลบงานนี้?")) return;
+    const id=editingId;
+    if(cloud){
+      const {error}=await cloud.from("tasks").delete().eq("id",id);
+      if(error){toast("ลบงานไม่สำเร็จ: "+error.message);return;}
+    }
     tasks = tasks.filter(t=>t.id!==editingId);
-    await persist();
+    if(!cloud) await persist();
     closeModal();
     renderAll();
     toast("ลบงานแล้ว");
@@ -723,20 +833,124 @@
     $("#cancelBtn").onclick = closeModal;
     $("#saveBtn").onclick = saveTask;
     $("#deleteBtn").onclick = deleteTask;
+    $("#addSubtaskBtn").onclick = async ()=>{const t=tasks.find(x=>x.id===editingId),input=$("#subtaskInput"),title=input.value.trim();if(!t||!title){toast("กรุณาบันทึก Main Task ก่อน แล้วจึงเพิ่มงานย่อย");return;}const sub={id:crypto.randomUUID(),title,status:$("#subtaskStatus").value,assignee:$("#subtaskAssignee").value.trim(),due:$("#subtaskDue").value,createdAt:new Date().toISOString()};t.subtasks.push(sub);activity(t,`เพิ่มงานย่อย: ${title}`);input.value="";$("#subtaskAssignee").value="";$("#subtaskDue").value="";await persist(t);renderTaskDetail(t);renderAll();};
     $("#exportBtn").onclick = exportJSON;
     $("#overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") closeModal(); });
     $("#searchInput").addEventListener("input", e=>{ filters.search = e.target.value; renderAll(); });
     $("#clearFilters").onclick = ()=>{
-      filters = { status:null, priority:null, department:null, category:null, search:"" };
+      filters = { status:null, priority:null, department:null, category:null, assignee:null, search:"" };
       $("#searchInput").value = "";
       renderAll();
     };
+    $("#notifyBtn").onclick=()=>{const menu=$("#notificationMenu");menu.classList.toggle("show");notifications.forEach(n=>n.read=true);persist();renderNotifications();};
+    $("#groupBy").onchange=e=>{groupBy=e.target.value;renderList();};
+    $("#authLoginTab").onclick=()=>setAuthMode("signin");
+    $("#authSignupTab").onclick=()=>setAuthMode("signup");
+    $("#authSubmitBtn").onclick=submitAuth;
+    $("#resendConfirmBtn").onclick=resendConfirmation;
+    $$("#loginEmail,#loginPassword,#confirmPassword").forEach(input=>input.addEventListener("keydown",e=>{if(e.key==="Enter")submitAuth();}));
     document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
+  }
+
+  function renderNotifications(){
+    const unread=notifications.filter(n=>!n.read).length;
+    const badge=$("#notifyBadge");badge.textContent=unread;badge.classList.toggle("show",unread>0);
+    $("#notificationList").innerHTML=notifications.slice(0,30).map(n=>`<div class="notice ${n.read?"":"unread"}" data-notice="${n.taskId}">${escapeHTML(n.text)}<div class="activity-time">${formatTime(n.at)}</div></div>`).join("")||'<div class="notice">ยังไม่มีการแจ้งเตือน</div>';
+    $$("[data-notice]").forEach(n=>n.onclick=()=>{ $("#notificationMenu").classList.remove("show"); openModal(n.dataset.notice); });
+  }
+  function setAuthMode(mode){
+    authMode=mode;
+    const signup=mode==="signup";
+    $("#authLoginTab").classList.toggle("active",!signup);
+    $("#authSignupTab").classList.toggle("active",signup);
+    $("#authTitle").textContent=signup?"สมัครสมาชิก":"เข้าสู่ระบบ";
+    $("#authIntro").textContent=signup?"สมัครด้วยอีเมลและรหัสผ่าน แล้วกดยืนยันลิงก์ในอีเมลก่อนเริ่มใช้งาน":"ใช้บัญชีอีเมลและรหัสผ่านของคุณเพื่อเข้าถึง Factory Ops Board";
+    $("#authSubmitBtn").textContent=signup?"สมัครสมาชิกและส่งอีเมลยืนยัน":"เข้าสู่ระบบ";
+    $("#authConfirm").classList.toggle("show",signup);
+    $("#loginPassword").autocomplete=signup?"new-password":"current-password";
+    $("#authMessage").classList.remove("show");
+    $("#resendConfirmBtn").classList.remove("show");
+  }
+
+  function authMessage(message,showResend=false){
+    $("#authMessage").textContent=message;
+    $("#authMessage").classList.add("show");
+    $("#resendConfirmBtn").classList.toggle("show",showResend);
+  }
+
+  async function submitAuth(){
+    const email=$("#loginEmail").value.trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast("กรุณากรอกอีเมลที่ถูกต้อง");return;}
+    if(!cloud){authMessage("กรุณาตั้งค่า Supabase URL และ Publishable key ใน config.js ก่อนใช้งานระบบสมาชิก");return;}
+    const password=$("#loginPassword").value;
+    if(password.length<8){authMessage("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");return;}
+    $("#authSubmitBtn").disabled=true;
+    try{
+      if(authMode==="signin"){
+        const {data,error}=await cloud.auth.signInWithPassword({email,password});
+        if(error) throw error;
+        await activateSession(data.session);
+        toast("เข้าสู่ระบบแล้ว");
+      }else{
+        if(appConfig.allowRegistration===false){authMessage("ระบบนี้ยังไม่เปิดให้สมัครสมาชิกเอง กรุณาติดต่อผู้ดูแล");return;}
+        const confirm=$("#confirmPassword").value;
+        if(password!==confirm){authMessage("รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน");return;}
+        const {data,error}=await cloud.auth.signUp({email,password,options:{emailRedirectTo:window.location.href}});
+        if(error) throw error;
+        pendingConfirmationEmail=email;
+        if(data.session){
+          await activateSession(data.session);
+          toast("สมัครสมาชิกและเข้าสู่ระบบแล้ว");
+        }else{
+          authMessage("ส่งอีเมลยืนยันไปที่ "+email+" แล้ว กรุณากดลิงก์ในอีเมลเพื่อเริ่มใช้งานระบบ",true);
+        }
+      }
+    }catch(error){
+      authMessage("ดำเนินการไม่สำเร็จ: "+(error.message||"โปรดลองใหม่"));
+    }finally{
+      $("#authSubmitBtn").disabled=false;
+    }
+  }
+
+  async function resendConfirmation(){
+    const email=pendingConfirmationEmail||$("#loginEmail").value.trim().toLowerCase();
+    if(!email||!cloud)return;
+    const {error}=await cloud.auth.resend({type:"signup",email,options:{emailRedirectTo:window.location.href}});
+    if(error){authMessage("ส่งอีเมลอีกครั้งไม่สำเร็จ: "+error.message,true);return;}
+    authMessage("ส่งอีเมลยืนยันอีกครั้งไปที่ "+email+" แล้ว",true);
+  }
+
+  function startRealtime(){
+    if(!cloud||realtimeChannel)return;
+    realtimeChannel=cloud.channel("tasks-live").on("postgres_changes",{event:"*",schema:"public",table:"tasks"},async()=>{await loadTasks();renderAll();}).subscribe();
+  }
+
+  async function activateSession(session){
+    if(!session||!session.user||!session.user.email)return;
+    currentUser=session.user.email;
+    $("#accountLabel").textContent=currentUser;
+    $("#loginGate").classList.remove("show");
+    try{ await loadTasks(); startRealtime(); renderNotifications(); renderAll(); }
+    catch(error){ authMessage("เข้าสู่ระบบแล้ว แต่โหลดข้อมูลงานไม่สำเร็จ: "+(error.message||"โปรดตรวจสิทธิ์ Supabase")); $("#loginGate").classList.add("show"); }
   }
 
   async function init(){
     bindUI();
-    await loadTasks();
+    appConfig=window.APP_CONFIG||{};
+    if(appConfig.supabaseUrl && appConfig.supabaseAnonKey && !appConfig.supabaseUrl.includes("YOUR_")){
+      cloud=window.supabase.createClient(appConfig.supabaseUrl,appConfig.supabaseAnonKey);
+      const {data:{session}}=await cloud.auth.getSession();
+      cloud.auth.onAuthStateChange((_event,sessionNow)=>{
+        if(sessionNow) setTimeout(()=>activateSession(sessionNow),0);
+        else { currentUser=null; $("#accountLabel").textContent=""; $("#loginGate").classList.add("show"); }
+      });
+      if(session) await activateSession(session); else $("#loginGate").classList.add("show");
+    }else{
+      await loadTasks();
+      currentUser=window.localStorage.getItem("factory-ops-clickup-user");
+      $("#loginGate").classList.add("show");
+    }
+    renderNotifications();
     renderAll();
     if(!storageOK){
       toast("โหมดออฟไลน์: ข้อมูลจะไม่ถูกบันทึกถาวร — ใช้ Export JSON เพื่อสำรองข้อมูล");
