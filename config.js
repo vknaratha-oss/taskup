@@ -12,5 +12,5 @@ window.APP_CONFIG = {
   // true  = พนักงานสมัครสมาชิกเองได้จากหน้าเข้าสู่ระบบ
   // false = ต้องให้แอดมินสร้างบัญชีให้ผ่าน Supabase Dashboard > Authentication > Users
   //         (แนะนำ false สำหรับระบบภายในองค์กร เพื่อกันคนนอกสมัครเข้าใช้งาน)
-  allowRegistration: false
+  allowRegistration: true
 };
