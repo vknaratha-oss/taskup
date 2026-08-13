@@ -457,6 +457,7 @@
   let currentView = "board";
   let groupBy = "assignee";
   let editingId = null;
+  let draftSubtasks = [];
   let storageOK = true;
   let currentUser = null;
   let notifications = [];
@@ -542,9 +543,11 @@
   let notifyChannel = null;
   async function loadNotifications(){
     if(!cloud || !currentUser) return;
+    // เทียบอีเมลแบบตัวพิมพ์เล็กเสมอ ป้องกันกรณี assignee พิมพ์ตัวใหญ่/เล็กไม่ตรงกับอีเมลที่ล็อกอิน
+    const email = currentUser.toLowerCase();
     const {data,error} = await cloud.from("notifications")
       .select("id,task_id,message,created_at,read")
-      .eq("recipient_email", currentUser)
+      .eq("recipient_email", email)
       .order("created_at",{ascending:false})
       .limit(50);
     if(error){ console.error("load notifications error", error); return; }
@@ -552,8 +555,9 @@
   }
   function subscribeNotifications(){
     if(!cloud || notifyChannel || !currentUser) return;
-    notifyChannel = cloud.channel("notify-"+currentUser)
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:`recipient_email=eq.${currentUser}`},payload=>{
+    const email = currentUser.toLowerCase();
+    notifyChannel = cloud.channel("notify-"+email)
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:`recipient_email=eq.${email}`},payload=>{
         const r = payload.new;
         notifications.unshift({id:r.id, taskId:r.task_id, text:r.message, at:r.created_at, read:r.read});
         renderNotifications();
@@ -564,7 +568,7 @@
   async function markNotificationsRead(){
     const hadUnread = notifications.some(n=>!n.read);
     if(cloud && hadUnread && currentUser){
-      await cloud.from("notifications").update({read:true}).eq("recipient_email",currentUser).eq("read",false);
+      await cloud.from("notifications").update({read:true}).eq("recipient_email",currentUser.toLowerCase()).eq("read",false);
     }
     notifications.forEach(n=>n.read=true);
   }
@@ -773,18 +777,35 @@
     el.innerHTML = options.map(o=>`<option value="${o}">${o}</option>`).join("");
   }
 
-  function renderTaskDetail(t){
-    const box=$("#taskDetail"); box.style.display=t?"grid":"none"; if(!t)return;
+  // งานที่กำลังแก้ไขอยู่จริง (มี editingId) หรือ "ฉบับร่าง" ระหว่างสร้างงานใหม่ (ยังไม่มี id)
+  function detailTarget(){
+    return editingId ? tasks.find(x=>x.id===editingId) : {subtasks:draftSubtasks, attachments:[], activity:[]};
+  }
+
+  function renderTaskDetail(){
+    const t = detailTarget();
+    $("#taskDetailSection").style.display = "block";
+    $("#taskDetail").style.display = "grid";
     const attach=(t.attachments||[]).map(a=>`<div class="attachment">📎 ${a.data?`<a href="${a.data}" download="${escapeHTML(a.name)}">${escapeHTML(a.name)}</a>`:`<a target="_blank" rel="noopener" href="${escapeHTML(a.url||"#")}">${escapeHTML(a.name)}</a>`}</div>`).join("");
-    $("#subtaskList").innerHTML=(t.subtasks.map((s,i)=>`<div class="subtask ${s.status==="4"?"done":""}"><select data-sub-status="${i}">${STATUSES.map(st=>`<option value="${st.id}" ${s.status===st.id?"selected":""}>${st.name}</option>`).join("")}</select><span>${escapeHTML(s.title)}</span><span class="subtask-meta">${escapeHTML(s.assignee||"ไม่ระบุ")} · ${fmtDue(s.due)}</span><button data-remove-sub="${i}">✕</button></div>`).join("") || '<div class="file-help">ยังไม่มีงานย่อย</div>')+`<h4 style="margin-top:15px;">ไฟล์แนบ (${(t.attachments||[]).length})</h4>`+(attach||'<div class="file-help">ยังไม่มีไฟล์แนบ</div>');
-    $("#activityList").innerHTML=t.activity.map(a=>`<div class="activity-item"><i class="activity-dot"></i><div><strong>${escapeHTML(a.user)}</strong> ${escapeHTML(a.text)}<div class="activity-time">${formatTime(a.at)}</div></div></div>`).join("");
-    $$("[data-sub-status]").forEach(c=>c.onchange=async()=>{const s=t.subtasks[+c.dataset.subStatus],before=STATUSES.find(st=>st.id===s.status).name;s.status=c.value;activity(t,`เปลี่ยนสถานะงานย่อย "${s.title}" จาก ${before} เป็น ${STATUSES.find(st=>st.id===s.status).name}`);await persist(t);renderTaskDetail(t);renderAll();});
-    $$("[data-remove-sub]").forEach(b=>b.onclick=async()=>{const s=t.subtasks.splice(+b.dataset.removeSub,1)[0];activity(t,`ลบงานย่อย: ${s.title}`);await persist(t);renderTaskDetail(t);renderAll();});
+    $("#subtaskList").innerHTML=(t.subtasks.map((s,i)=>`<div class="subtask ${s.status==="4"?"done":""}"><select data-sub-status="${i}">${STATUSES.map(st=>`<option value="${st.id}" ${s.status===st.id?"selected":""}>${st.name}</option>`).join("")}</select><span>${escapeHTML(s.title)}</span><span class="subtask-meta">${escapeHTML(s.assignee||"ไม่ระบุ")} · ${fmtDue(s.due)}</span><button data-remove-sub="${i}">✕</button></div>`).join("") || `<div class="file-help">${editingId?"ยังไม่มีงานย่อย":"ยังไม่มีงานย่อย — เพิ่มได้เลยแม้ยังไม่ได้กดบันทึกงานหลัก"}</div>`)+`<h4 style="margin-top:15px;">ไฟล์แนบ (${(t.attachments||[]).length})</h4>`+(attach||'<div class="file-help">ยังไม่มีไฟล์แนบ (แนบไฟล์ได้หลังบันทึกงานหลักแล้ว)</div>');
+    $("#activityList").innerHTML=(t.activity||[]).map(a=>`<div class="activity-item"><i class="activity-dot"></i><div><strong>${escapeHTML(a.user)}</strong> ${escapeHTML(a.text)}<div class="activity-time">${formatTime(a.at)}</div></div></div>`).join("") || '<div class="file-help">ยังไม่มีประวัติกิจกรรม</div>';
+    $$("[data-sub-status]").forEach(c=>c.onchange=async()=>{
+      const cur=detailTarget(); const s=cur.subtasks[+c.dataset.subStatus]; const before=STATUSES.find(st=>st.id===s.status).name;
+      s.status=c.value;
+      if(editingId){ activity(cur,`เปลี่ยนสถานะงานย่อย "${s.title}" จาก ${before} เป็น ${STATUSES.find(st=>st.id===s.status).name}`); await persist(cur); renderAll(); }
+      renderTaskDetail();
+    });
+    $$("[data-remove-sub]").forEach(b=>b.onclick=async()=>{
+      const cur=detailTarget(); const s=cur.subtasks.splice(+b.dataset.removeSub,1)[0];
+      if(editingId){ activity(cur,`ลบงานย่อย: ${s.title}`); await persist(cur); renderAll(); }
+      renderTaskDetail();
+    });
   }
 
   function openModal(id){
     editingId = id || null;
     const t = id ? tasks.find(x=>x.id===id) : null;
+    if(!t) draftSubtasks = [];
     $("#modalTitle").textContent = t ? `แก้ไขงาน — ${t.id}` : "งานใหม่";
     $("#deleteBtn").style.display = t ? "inline-flex" : "none";
 
@@ -803,7 +824,7 @@
     $("#f-link").value = t ? t.link : "";
     $("#f-note").value = t ? t.note : "";
     $("#f-files").value = "";
-    renderTaskDetail(t);
+    renderTaskDetail();
 
     $("#overlay").classList.add("show");
   }
@@ -821,7 +842,7 @@
       category: $("#f-category").value,
       priority: $("#f-priority").value,
       status: $("#f-status").value,
-      assignee: $("#f-assignee").value.trim(),
+      assignee: $("#f-assignee").value.trim().toLowerCase(),
       department: $("#f-department").value,
       location: $("#f-location").value.trim(),
       due: $("#f-due").value,
@@ -840,12 +861,13 @@
       toast("บันทึกการแก้ไขแล้ว");
     }else{
       data.id = nextId();
-      data.subtasks=[]; data.attachments=[]; data.activity=[];
+      data.subtasks=draftSubtasks.slice(); data.attachments=[]; data.activity=[];
       data.createdBy = currentUser || "";
       const files=Array.from($("#f-files").files||[]); data.attachments.push(...await readAttachments(files));
       if(data.link) data.attachments.push({name:"ลิงก์เอกสาร",url:data.link,type:"link"});
       activity(data,"สร้างงานใหม่และแจ้งผู้เกี่ยวข้อง");
       tasks.push(data);
+      draftSubtasks = [];
       toast("เพิ่มงานใหม่แล้ว: " + data.id);
     }
     await persist(editingId ? tasks.find(x=>x.id===editingId) : data);
@@ -895,7 +917,22 @@
     $("#cancelBtn").onclick = closeModal;
     $("#saveBtn").onclick = saveTask;
     $("#deleteBtn").onclick = deleteTask;
-    $("#addSubtaskBtn").onclick = async ()=>{const t=tasks.find(x=>x.id===editingId),input=$("#subtaskInput"),title=input.value.trim();if(!t||!title){toast("กรุณาบันทึก Main Task ก่อน แล้วจึงเพิ่มงานย่อย");return;}const sub={id:crypto.randomUUID(),title,status:$("#subtaskStatus").value,assignee:$("#subtaskAssignee").value.trim(),due:$("#subtaskDue").value,createdAt:new Date().toISOString()};t.subtasks.push(sub);activity(t,`เพิ่มงานย่อย: ${title}`);input.value="";$("#subtaskAssignee").value="";$("#subtaskDue").value="";await persist(t);renderTaskDetail(t);renderAll();};
+    $("#addSubtaskBtn").onclick = async ()=>{
+      const input=$("#subtaskInput"), title=input.value.trim();
+      if(!title){ toast("กรุณากรอกชื่องานย่อย"); return; }
+      const sub={id:crypto.randomUUID(),title,status:$("#subtaskStatus").value,assignee:$("#subtaskAssignee").value.trim().toLowerCase(),due:$("#subtaskDue").value,createdAt:new Date().toISOString()};
+      if(editingId){
+        const t=tasks.find(x=>x.id===editingId);
+        t.subtasks.push(sub);
+        activity(t,`เพิ่มงานย่อย: ${title}`);
+        await persist(t);
+        renderAll();
+      }else{
+        draftSubtasks.push(sub); // ยังไม่ได้บันทึกงานหลัก เก็บไว้ในฉบับร่างก่อน จะถูกบันทึกพร้อมกันตอนกดบันทึก
+      }
+      input.value=""; $("#subtaskAssignee").value=""; $("#subtaskDue").value="";
+      renderTaskDetail();
+    };
     $("#exportBtn").onclick = exportJSON;
     $("#overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") closeModal(); });
     $("#searchInput").addEventListener("input", e=>{ filters.search = e.target.value; renderAll(); });
