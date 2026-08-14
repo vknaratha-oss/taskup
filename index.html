@@ -250,6 +250,26 @@
   .subtask:last-child{border-bottom:0}.subtask input{accent-color:var(--steel)}.subtask.done span{text-decoration:line-through;color:var(--muted)}
   .subtask button{margin-left:auto;background:none;color:var(--muted);border:0;cursor:pointer}.subtask select{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:5px;padding:4px;font:10px var(--mono)}.add-inline{display:flex;gap:6px;margin-top:9px}.add-inline input{min-width:0;flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--text);font-family:var(--sans);font-size:12px;}
   .subtask-add{flex-wrap:wrap}.subtask-add #subtaskInput{flex-basis:100%}.subtask-add select,.subtask-add input{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--text);font:11px var(--sans);min-width:0}.subtask-add #subtaskAssignee{flex:1}.subtask-meta{font:10px var(--mono);color:var(--muted-2);margin-left:auto;white-space:nowrap}
+  .subtask-row{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:9px 8px;border-radius:7px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--line-soft);}
+  .subtask-row:last-child{border-bottom:0;}
+  .subtask-row:hover{background:var(--panel);}
+  .subtask-row-title{flex:1;min-width:100px;font-weight:500;}
+  .subtask-row-meta{color:var(--muted-2);font-size:10.5px;white-space:nowrap;}
+  .subtask-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;padding-top:12px;border-top:1px dashed var(--line);}
+  .subtask-form .field label{font-size:10px;}
+  .subtask-form textarea{min-height:44px;}
+  .tag-picker{position:relative;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);padding:6px;}
+  .tag-picker-tags{display:flex;flex-wrap:wrap;gap:5px;}
+  .tag-picker-tags:not(:empty){margin-bottom:4px;}
+  .tag-chip{display:inline-flex;align-items:center;gap:5px;background:var(--steel-bg);color:var(--steel);border-radius:14px;padding:3px 6px 3px 10px;font-size:12px;white-space:nowrap;}
+  .tag-chip button{background:none;border:none;color:var(--steel);cursor:pointer;font-size:11px;padding:0 2px;line-height:1;}
+  .tag-picker-input{width:100%;border:none;background:transparent;outline:none;color:var(--text);font:14px var(--sans);padding:4px 2px;}
+  .tag-picker-suggestions{display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--panel);border:1px solid var(--line);border-radius:8px;max-height:180px;overflow-y:auto;z-index:20;box-shadow:0 10px 30px rgba(0,0,0,.35);}
+  .tag-picker-suggestions.show{display:block;}
+  .tag-picker-option{padding:8px 10px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;}
+  .tag-picker-option:hover{background:var(--panel-2);}
+  .tag-picker-option span{color:var(--muted-2);font-size:11px;}
+  .tag-picker-empty{padding:8px 10px;font-size:12px;color:var(--muted-2);}
   .attachment{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:12px;}.attachment a{color:var(--steel);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-help{font-size:10.5px;color:var(--muted);margin-top:5px;}
   .activity{max-height:250px;overflow:auto}.activity-item{display:grid;grid-template-columns:8px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:11.5px;line-height:1.45}.activity-item:last-child{border-bottom:0}.activity-dot{width:7px;height:7px;border-radius:50%;background:var(--steel);margin-top:5px}.activity-time{font:10px var(--mono);color:var(--muted-2);margin-top:2px}
   .notification-menu{position:fixed;right:20px;top:58px;width:340px;max-height:420px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 45px rgba(0,0,0,.45);z-index:70;padding:8px;display:none}.notification-menu.show{display:block}.notification-menu h4{font:11px var(--mono);color:var(--muted);letter-spacing:.8px;margin:8px}.notice{padding:10px;border-bottom:1px solid var(--line-soft);font-size:12px;cursor:pointer}.notice:hover{background:var(--panel-2)}.notice.unread{border-left:2px solid var(--steel)}
@@ -385,8 +405,8 @@
         <div class="form-section-title">ผู้รับผิดชอบ &amp; กำหนดการ</div>
         <div class="modal-body">
           <div class="field full">
-            <label>ผู้รับผิดชอบ (เลือกได้หลายคน — กด Ctrl/Cmd ค้างเพื่อเลือกหลายคน)</label>
-            <select id="f-assignee" multiple size="4"></select>
+            <label>ผู้รับผิดชอบ (พิมพ์ชื่อเพื่อค้นหา — เลือกได้หลายคน)</label>
+            <div class="tag-picker" id="f-assignee-picker"></div>
             <div class="field-help">รายชื่อมาจากผู้ที่ลงทะเบียนใช้งานแล้วเท่านั้น — ดูหรือแก้ชื่อได้ที่ปุ่ม "👥 สมาชิก"</div>
           </div>
           <div class="field">
@@ -425,7 +445,32 @@
       <div class="form-section" id="taskDetailSection" style="display:none;">
         <div class="form-section-title">งานย่อย &amp; ประวัติกิจกรรม</div>
         <div class="detail-grid" id="taskDetail">
-          <div class="detail-panel"><h4>งานย่อย</h4><div id="subtaskList"></div><div class="add-inline subtask-add"><input id="subtaskInput" placeholder="ชื่องานย่อย..."><select id="subtaskStatus"><option value="1">To Do</option><option value="2">In Progress</option><option value="3">Pending</option><option value="4">Complete</option></select><select id="subtaskAssignee" multiple size="3" style="flex-basis:100%"></select><input id="subtaskDue" type="date"><button class="btn" id="addSubtaskBtn">เพิ่ม</button></div></div>
+          <div class="detail-panel">
+            <h4>งานย่อย</h4>
+            <div id="subtaskList"></div>
+            <button type="button" class="btn" id="addSubtaskOpenBtn" style="width:100%;justify-content:center;margin-top:8px;">+ เพิ่มงานย่อย</button>
+            <div class="subtask-form" id="subtaskForm" style="display:none;">
+              <div class="field full"><label>ชื่องานย่อย</label><input id="st-title" placeholder="ชื่องานย่อย..."></div>
+              <div class="field"><label>หมวดหมู่</label><select id="st-category"></select></div>
+              <div class="field"><label>ความสำคัญ</label><select id="st-priority">
+                <option value="Urgent">🔴 Urgent</option><option value="High">🟡 High</option><option value="Normal">🟢 Normal</option>
+              </select></div>
+              <div class="field"><label>สถานะ</label><select id="st-status">
+                <option value="1">1. To Do</option><option value="2">2. In Progress</option><option value="3">3. Pending Inspection</option><option value="4">4. Complete</option>
+              </select></div>
+              <div class="field"><label>แผนก</label><select id="st-department"></select></div>
+              <div class="field"><label>พื้นที่ / ไลน์ผลิต</label><input id="st-location"></div>
+              <div class="field"><label>วันเริ่มงาน</label><input id="st-start" type="date"></div>
+              <div class="field"><label>กำหนดเสร็จ</label><input id="st-due" type="date"></div>
+              <div class="field full"><label>ผู้รับผิดชอบ (พิมพ์ชื่อเพื่อค้นหา)</label><div class="tag-picker" id="st-assignee-picker"></div></div>
+              <div class="field full"><label>หมายเหตุ</label><textarea id="st-note"></textarea></div>
+              <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;">
+                <button type="button" class="btn btn-danger" id="st-delete" style="display:none;">ลบงานย่อย</button>
+                <button type="button" class="btn btn-ghost" id="st-cancel">ยกเลิก</button>
+                <button type="button" class="btn btn-primary" id="st-save">บันทึกงานย่อย</button>
+              </div>
+            </div>
+          </div>
           <div class="detail-panel"><h4>ประวัติกิจกรรม</h4><div class="activity" id="activityList"></div></div>
         </div>
       </div>
@@ -558,7 +603,15 @@
       t.assignees = toAssigneeArray(t.assignees, t.assignee);
       delete t.assignee;
       t.subtasks = Array.isArray(t.subtasks) ? t.subtasks : [];
-      t.subtasks=t.subtasks.map(s=>({id:s.id||crypto.randomUUID(),title:s.title||"งานย่อย",status:s.status||(s.done?"4":"1"),assignees:toAssigneeArray(s.assignees, s.assignee || t.assignees[0]),due:s.due||"",createdAt:s.createdAt||new Date().toISOString()}));
+      t.subtasks=t.subtasks.map(s=>({
+        id:s.id||crypto.randomUUID(), title:s.title||"งานย่อย",
+        category:s.category||CATEGORIES[0], priority:s.priority||"Normal",
+        status:s.status||(s.done?"4":"1"),
+        assignees:toAssigneeArray(s.assignees, s.assignee || t.assignees[0]),
+        department:s.department||t.department||DEPARTMENTS[0],
+        location:s.location||"", start:s.start||"", due:s.due||"", note:s.note||"",
+        createdAt:s.createdAt||new Date().toISOString()
+      }));
       t.attachments = Array.isArray(t.attachments) ? t.attachments : (t.link ? [{name:"ลิงก์เอกสาร",url:t.link,type:"link"}] : []);
       t.activity = Array.isArray(t.activity) ? t.activity : [{at:new Date().toISOString(),user:"system",text:"นำเข้ารายการงาน"}];
       delete t.parentId;
@@ -593,6 +646,60 @@
     if(!list || !list.length) return "ยังไม่กำหนดผู้รับผิดชอบ";
     return list.map(memberName).join(", ");
   }
+
+  // ===== Tag-picker: ช่องพิมพ์ชื่อค้นหาแล้วเลือกผู้รับผิดชอบได้หลายคน =====
+  const pickerState = {}; // containerId -> Set ของอีเมลที่เลือกไว้
+  function initPicker(containerId, selected){
+    const root = $(containerId);
+    if(!root) return;
+    pickerState[containerId] = new Set((selected||[]).map(e=>String(e).toLowerCase()));
+    root.innerHTML = `<div class="tag-picker-tags"></div><input type="text" class="tag-picker-input" placeholder="พิมพ์ชื่อเพื่อค้นหา..."><div class="tag-picker-suggestions"></div>`;
+    renderPickerTags(containerId);
+    const input = root.querySelector(".tag-picker-input");
+    input.addEventListener("input", ()=> renderPickerSuggestions(containerId, input.value));
+    input.addEventListener("focus", ()=> renderPickerSuggestions(containerId, input.value));
+    root.addEventListener("click", e=>{ if(e.target===input) renderPickerSuggestions(containerId, input.value); });
+  }
+  function renderPickerTags(containerId){
+    const root = $(containerId);
+    const tagsEl = root.querySelector(".tag-picker-tags");
+    const emails = Array.from(pickerState[containerId]||[]);
+    tagsEl.innerHTML = emails.map(email=>`<span class="tag-chip">${escapeHTML(memberName(email))}<button type="button" data-remove-tag="${email}">✕</button></span>`).join("");
+    tagsEl.querySelectorAll("[data-remove-tag]").forEach(btn=>{
+      btn.onclick = ()=>{ pickerState[containerId].delete(btn.dataset.removeTag); renderPickerTags(containerId); };
+    });
+  }
+  function renderPickerSuggestions(containerId, query){
+    const root = $(containerId);
+    const box = root.querySelector(".tag-picker-suggestions");
+    const q = (query||"").trim().toLowerCase();
+    const selected = pickerState[containerId] || new Set();
+    const matches = teamMembers.filter(m=> !selected.has(m.email) && (!q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))).slice(0,6);
+    if(!matches.length){
+      box.innerHTML = `<div class="tag-picker-empty">${teamMembers.length?"ไม่พบชื่อที่ตรงกัน":"ยังไม่มีสมาชิกลงทะเบียน"}</div>`;
+      box.classList.add("show");
+      return;
+    }
+    box.innerHTML = matches.map(m=>`<div class="tag-picker-option" data-email="${m.email}">${escapeHTML(m.name)}<span>${escapeHTML(m.email)}</span></div>`).join("");
+    box.classList.add("show");
+    box.querySelectorAll("[data-email]").forEach(opt=>{
+      opt.onclick = ()=>{
+        pickerState[containerId].add(opt.dataset.email);
+        renderPickerTags(containerId);
+        const input = root.querySelector(".tag-picker-input");
+        input.value=""; box.classList.remove("show"); input.focus();
+      };
+    });
+  }
+  function getPickerSelected(containerId){
+    return Array.from(pickerState[containerId]||[]);
+  }
+  document.addEventListener("click", e=>{
+    $$(".tag-picker-suggestions.show").forEach(box=>{
+      const root = box.closest(".tag-picker");
+      if(root && !root.contains(e.target)) box.classList.remove("show");
+    });
+  });
   function activity(t,text){
     const item={at:new Date().toISOString(),user:currentUser||"system",text};
     t.activity.unshift(item);
@@ -891,31 +998,104 @@
     return editingId ? tasks.find(x=>x.id===editingId) : {subtasks:draftSubtasks, attachments:[], activity:[]};
   }
 
+  let editingSubtaskIndex = null; // index ใน subtasks ที่กำลังแก้ไข, null = กำลังเพิ่มใหม่/ฟอร์มปิดอยู่
+
   function renderTaskDetail(){
     const t = detailTarget();
     $("#taskDetailSection").style.display = "block";
     $("#taskDetail").style.display = "grid";
     const attach=(t.attachments||[]).map(a=>`<div class="attachment">📎 ${a.data?`<a href="${a.data}" download="${escapeHTML(a.name)}">${escapeHTML(a.name)}</a>`:`<a target="_blank" rel="noopener" href="${escapeHTML(a.url||"#")}">${escapeHTML(a.name)}</a>`}</div>`).join("");
-    populateMemberSelect("#subtaskAssignee", []);
-    $("#subtaskList").innerHTML=(t.subtasks.map((s,i)=>`<div class="subtask ${s.status==="4"?"done":""}"><select data-sub-status="${i}">${STATUSES.map(st=>`<option value="${st.id}" ${s.status===st.id?"selected":""}>${st.name}</option>`).join("")}</select><span>${escapeHTML(s.title)}</span><span class="subtask-meta">${escapeHTML(assigneeNames(s.assignees))} · ${fmtDue(s.due)}</span><button data-remove-sub="${i}">✕</button></div>`).join("") || `<div class="file-help">${editingId?"ยังไม่มีงานย่อย":"ยังไม่มีงานย่อย — เพิ่มได้เลยแม้ยังไม่ได้กดบันทึกงานหลัก"}</div>`)+`<h4 style="margin-top:15px;">ไฟล์แนบ (${(t.attachments||[]).length})</h4>`+(attach||'<div class="file-help">ยังไม่มีไฟล์แนบ (แนบไฟล์ได้หลังบันทึกงานหลักแล้ว)</div>');
-    $("#activityList").innerHTML=(t.activity||[]).map(a=>`<div class="activity-item"><i class="activity-dot"></i><div><strong>${escapeHTML(a.user)}</strong> ${escapeHTML(a.text)}<div class="activity-time">${formatTime(a.at)}</div></div></div>`).join("") || '<div class="file-help">ยังไม่มีประวัติกิจกรรม</div>';
-    $$("[data-sub-status]").forEach(c=>c.onchange=async()=>{
-      const cur=detailTarget(); const s=cur.subtasks[+c.dataset.subStatus]; const before=STATUSES.find(st=>st.id===s.status).name;
-      s.status=c.value;
-      if(editingId){ activity(cur,`เปลี่ยนสถานะงานย่อย "${s.title}" จาก ${before} เป็น ${STATUSES.find(st=>st.id===s.status).name}`); await persist(cur); renderAll(); }
-      renderTaskDetail();
+    $("#subtaskList").innerHTML = (t.subtasks.length ? t.subtasks.map((s,i)=>`
+      <div class="subtask-row" data-sub-index="${i}">
+        <span class="status-pill st-${s.status}">${STATUSES.find(x=>x.id===s.status).name}</span>
+        <span class="subtask-row-title">${escapeHTML(s.title)}</span>
+        <span class="tag pr-${priorityClass(s.priority||"Normal")}">${priorityLabel(s.priority||"Normal")}</span>
+        <span class="subtask-row-meta">${escapeHTML(assigneeNames(s.assignees))} · ${fmtDue(s.due)}</span>
+      </div>`).join("") : `<div class="file-help">${editingId?"ยังไม่มีงานย่อย":"ยังไม่มีงานย่อย — เพิ่มได้เลยแม้ยังไม่ได้กดบันทึกงานหลัก"}</div>`)
+      + `<h4 style="margin-top:15px;">ไฟล์แนบ (${(t.attachments||[]).length})</h4>`
+      + (attach || '<div class="file-help">ยังไม่มีไฟล์แนบ (แนบไฟล์ได้หลังบันทึกงานหลักแล้ว)</div>');
+    $$("[data-sub-index]", $("#subtaskList")).forEach(row=>{
+      row.onclick = ()=> openSubtaskForm(+row.dataset.subIndex);
     });
-    $$("[data-remove-sub]").forEach(b=>b.onclick=async()=>{
-      const cur=detailTarget(); const s=cur.subtasks.splice(+b.dataset.removeSub,1)[0];
-      if(editingId){ activity(cur,`ลบงานย่อย: ${s.title}`); await persist(cur); renderAll(); }
-      renderTaskDetail();
-    });
+    $("#activityList").innerHTML = (t.activity||[]).map(a=>`<div class="activity-item"><i class="activity-dot"></i><div><strong>${escapeHTML(a.user)}</strong> ${escapeHTML(a.text)}<div class="activity-time">${formatTime(a.at)}</div></div></div>`).join("") || '<div class="file-help">ยังไม่มีประวัติกิจกรรม</div>';
+    if(editingSubtaskIndex===null && !$("#subtaskForm").dataset.adding){
+      $("#subtaskForm").style.display = "none";
+    }
+  }
+
+  function openSubtaskForm(index){
+    editingSubtaskIndex = (index===undefined) ? null : index;
+    const t = detailTarget();
+    const s = editingSubtaskIndex!=null ? t.subtasks[editingSubtaskIndex] : null;
+    populateSelect("#st-category", CATEGORIES);
+    populateSelect("#st-department", DEPARTMENTS);
+    $("#st-title").value = s ? s.title : "";
+    $("#st-category").value = s ? (s.category||CATEGORIES[0]) : CATEGORIES[0];
+    $("#st-priority").value = s ? (s.priority||"Normal") : "Normal";
+    $("#st-status").value = s ? s.status : "1";
+    $("#st-department").value = s ? (s.department||DEPARTMENTS[0]) : DEPARTMENTS[0];
+    $("#st-location").value = s ? (s.location||"") : "";
+    $("#st-start").value = s ? (s.start||"") : "";
+    $("#st-due").value = s ? (s.due||"") : "";
+    $("#st-note").value = s ? (s.note||"") : "";
+    initPicker("#st-assignee-picker", s ? s.assignees : []);
+    $("#st-delete").style.display = s ? "inline-flex" : "none";
+    $("#subtaskForm").dataset.adding = "1";
+    $("#subtaskForm").style.display = "grid";
+    $("#st-title").focus();
+  }
+
+  function closeSubtaskForm(){
+    editingSubtaskIndex = null;
+    delete $("#subtaskForm").dataset.adding;
+    $("#subtaskForm").style.display = "none";
+  }
+
+  async function saveSubtaskForm(){
+    const title = $("#st-title").value.trim();
+    if(!title){ toast("กรุณากรอกชื่องานย่อย"); return; }
+    const data = {
+      title,
+      category: $("#st-category").value,
+      priority: $("#st-priority").value,
+      status: $("#st-status").value,
+      department: $("#st-department").value,
+      location: $("#st-location").value.trim(),
+      start: $("#st-start").value,
+      due: $("#st-due").value,
+      note: $("#st-note").value.trim(),
+      assignees: getPickerSelected("#st-assignee-picker")
+    };
+    const t = detailTarget();
+    if(editingSubtaskIndex!=null){
+      const s = t.subtasks[editingSubtaskIndex];
+      Object.assign(s, data);
+      if(editingId){ activity(t, `แก้ไขงานย่อย: ${title}`); await persist(t); renderAll(); }
+    }else{
+      data.id = crypto.randomUUID();
+      data.createdAt = new Date().toISOString();
+      t.subtasks.push(data);
+      if(editingId){ activity(t, `เพิ่มงานย่อย: ${title}`); await persist(t); renderAll(); }
+    }
+    closeSubtaskForm();
+    renderTaskDetail();
+  }
+
+  async function deleteSubtaskForm(){
+    if(editingSubtaskIndex==null) return;
+    if(!confirm("ยืนยันการลบงานย่อยนี้?")) return;
+    const t = detailTarget();
+    const s = t.subtasks.splice(editingSubtaskIndex,1)[0];
+    if(editingId){ activity(t, `ลบงานย่อย: ${s.title}`); await persist(t); renderAll(); }
+    closeSubtaskForm();
+    renderTaskDetail();
   }
 
   function openModal(id){
     editingId = id || null;
     const t = id ? tasks.find(x=>x.id===id) : null;
     if(!t) draftSubtasks = [];
+    closeSubtaskForm();
     $("#modalTitle").textContent = t ? `แก้ไขงาน — ${t.id}` : "งานใหม่";
     $("#deleteBtn").style.display = t ? "inline-flex" : "none";
 
@@ -926,7 +1106,7 @@
     $("#f-category").value = t ? t.category : CATEGORIES[0];
     $("#f-priority").value = t ? t.priority : "Normal";
     $("#f-status").value = t ? t.status : "1";
-    populateMemberSelect("#f-assignee", t ? t.assignees : []);
+    initPicker("#f-assignee-picker", t ? t.assignees : []);
     $("#f-department").value = t ? t.department : DEPARTMENTS[0];
     $("#f-location").value = t ? t.location : "";
     $("#f-start").value = t ? t.start : "";
@@ -942,6 +1122,7 @@
   function closeModal(){
     $("#overlay").classList.remove("show");
     editingId = null;
+    closeSubtaskForm();
   }
 
   async function saveTask(){
@@ -952,7 +1133,7 @@
       category: $("#f-category").value,
       priority: $("#f-priority").value,
       status: $("#f-status").value,
-      assignees: getSelectedEmails("#f-assignee"),
+      assignees: getPickerSelected("#f-assignee-picker"),
       department: $("#f-department").value,
       location: $("#f-location").value.trim(),
       due: $("#f-due").value,
@@ -1035,22 +1216,10 @@
     $("#membersOverlay").addEventListener("click", e=>{ if(e.target.id==="membersOverlay") $("#membersOverlay").classList.remove("show"); });
     $("#saveBtn").onclick = saveTask;
     $("#deleteBtn").onclick = deleteTask;
-    $("#addSubtaskBtn").onclick = async ()=>{
-      const input=$("#subtaskInput"), title=input.value.trim();
-      if(!title){ toast("กรุณากรอกชื่องานย่อย"); return; }
-      const sub={id:crypto.randomUUID(),title,status:$("#subtaskStatus").value,assignees:getSelectedEmails("#subtaskAssignee"),due:$("#subtaskDue").value,createdAt:new Date().toISOString()};
-      if(editingId){
-        const t=tasks.find(x=>x.id===editingId);
-        t.subtasks.push(sub);
-        activity(t,`เพิ่มงานย่อย: ${title}`);
-        await persist(t);
-        renderAll();
-      }else{
-        draftSubtasks.push(sub); // ยังไม่ได้บันทึกงานหลัก เก็บไว้ในฉบับร่างก่อน จะถูกบันทึกพร้อมกันตอนกดบันทึก
-      }
-      input.value=""; $("#subtaskDue").value="";
-      renderTaskDetail();
-    };
+    $("#addSubtaskOpenBtn").onclick = ()=> openSubtaskForm(undefined);
+    $("#st-save").onclick = saveSubtaskForm;
+    $("#st-cancel").onclick = closeSubtaskForm;
+    $("#st-delete").onclick = deleteSubtaskForm;
     $("#exportBtn").onclick = exportJSON;
     $("#overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") closeModal(); });
     $("#searchInput").addEventListener("input", e=>{ filters.search = e.target.value; renderAll(); });
