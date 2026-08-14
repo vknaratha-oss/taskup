@@ -222,6 +222,9 @@
   .field select[multiple]{height:auto;padding:5px;}
   .field select[multiple] option{padding:6px 8px;border-radius:5px;}
   .field-help{font-size:10.5px;color:var(--muted);margin-top:2px;}
+  .select-row{display:flex;gap:6px;}
+  .select-row select{flex:1;min-width:0;}
+  .select-row button{flex-shrink:0;padding:0 12px;font-weight:700;}
   .modal-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 22px;border-top:1px solid var(--line);flex-shrink:0;background:var(--panel);}
   .members-modal{max-width:560px;}
   .member-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-soft);}
@@ -380,7 +383,7 @@
           </div>
           <div class="field">
             <label>หมวดหมู่</label>
-            <select id="f-category"></select>
+            <div class="select-row"><select id="f-category"></select><button type="button" class="btn" id="f-category-add" title="เพิ่มหมวดหมู่ใหม่">+</button></div>
           </div>
           <div class="field">
             <label>ความสำคัญ</label>
@@ -411,7 +414,7 @@
           </div>
           <div class="field">
             <label>แผนก</label>
-            <select id="f-department"></select>
+            <div class="select-row"><select id="f-department"></select><button type="button" class="btn" id="f-department-add" title="เพิ่มแผนกใหม่">+</button></div>
           </div>
           <div class="field">
             <label>พื้นที่ / ไลน์ผลิต</label>
@@ -451,14 +454,14 @@
             <button type="button" class="btn" id="addSubtaskOpenBtn" style="width:100%;justify-content:center;margin-top:8px;">+ เพิ่มงานย่อย</button>
             <div class="subtask-form" id="subtaskForm" style="display:none;">
               <div class="field full"><label>ชื่องานย่อย</label><input id="st-title" placeholder="ชื่องานย่อย..."></div>
-              <div class="field"><label>หมวดหมู่</label><select id="st-category"></select></div>
+              <div class="field"><label>หมวดหมู่</label><div class="select-row"><select id="st-category"></select><button type="button" class="btn" id="st-category-add" title="เพิ่มหมวดหมู่ใหม่">+</button></div></div>
               <div class="field"><label>ความสำคัญ</label><select id="st-priority">
                 <option value="Urgent">🔴 Urgent</option><option value="High">🟡 High</option><option value="Normal">🟢 Normal</option>
               </select></div>
               <div class="field"><label>สถานะ</label><select id="st-status">
                 <option value="1">1. To Do</option><option value="2">2. In Progress</option><option value="3">3. Pending Inspection</option><option value="4">4. Complete</option>
               </select></div>
-              <div class="field"><label>แผนก</label><select id="st-department"></select></div>
+              <div class="field"><label>แผนก</label><div class="select-row"><select id="st-department"></select><button type="button" class="btn" id="st-department-add" title="เพิ่มแผนกใหม่">+</button></div></div>
               <div class="field"><label>พื้นที่ / ไลน์ผลิต</label><input id="st-location"></div>
               <div class="field"><label>วันเริ่มงาน</label><input id="st-start" type="date"></div>
               <div class="field"><label>กำหนดเสร็จ</label><input id="st-due" type="date"></div>
@@ -624,6 +627,42 @@
     const {data,error} = await cloud.from("profiles").select("id,email,display_name").order("email");
     if(error){ console.error("load members error", error); return; }
     teamMembers = (data||[]).map(r=>({id:r.id, email:r.email, name:r.display_name || r.email.split("@")[0]}));
+  }
+  async function loadTaxonomies(){
+    if(!cloud) return;
+    const [{data:cats,error:e1},{data:deps,error:e2}] = await Promise.all([
+      cloud.from("categories").select("name").order("name"),
+      cloud.from("departments").select("name").order("name")
+    ]);
+    if(e1){ console.error("load categories error", e1); }
+    else if(cats && cats.length){ CATEGORIES.length=0; CATEGORIES.push(...cats.map(c=>c.name)); }
+    if(e2){ console.error("load departments error", e2); }
+    else if(deps && deps.length){ DEPARTMENTS.length=0; DEPARTMENTS.push(...deps.map(d=>d.name)); }
+  }
+  async function addTaxonomy(kind, targetSelectId){
+    const label = kind==="category" ? "หมวดหมู่" : "แผนก";
+    const name = prompt(`เพิ่ม${label}ใหม่:`);
+    if(!name || !name.trim()) return;
+    const trimmed = name.trim();
+    const list = kind==="category" ? CATEGORIES : DEPARTMENTS;
+    if(!cloud){
+      if(!list.includes(trimmed)) list.push(trimmed);
+      populateSelect(targetSelectId, list);
+      $(targetSelectId).value = trimmed;
+      toast(`เพิ่ม${label} "${trimmed}" แล้ว (โหมดออฟไลน์ — ไม่บันทึกถาวร)`);
+      return;
+    }
+    const table = kind==="category" ? "categories" : "departments";
+    const {error} = await cloud.from(table).insert({name:trimmed});
+    if(error){
+      if(error.code==="23505"){ toast(`มี${label}นี้อยู่แล้ว`); }
+      else{ toast("เพิ่มไม่สำเร็จ: "+error.message); }
+      return;
+    }
+    await loadTaxonomies();
+    populateSelect(targetSelectId, list);
+    $(targetSelectId).value = trimmed;
+    toast(`เพิ่ม${label} "${trimmed}" แล้ว`);
   }
   function memberName(email){
     if(!email) return "";
@@ -1220,6 +1259,10 @@
     $("#st-save").onclick = saveSubtaskForm;
     $("#st-cancel").onclick = closeSubtaskForm;
     $("#st-delete").onclick = deleteSubtaskForm;
+    $("#f-category-add").onclick = ()=> addTaxonomy("category", "#f-category");
+    $("#f-department-add").onclick = ()=> addTaxonomy("department", "#f-department");
+    $("#st-category-add").onclick = ()=> addTaxonomy("category", "#st-category");
+    $("#st-department-add").onclick = ()=> addTaxonomy("department", "#st-department");
     $("#exportBtn").onclick = exportJSON;
     $("#overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") closeModal(); });
     $("#searchInput").addEventListener("input", e=>{ filters.search = e.target.value; renderAll(); });
@@ -1316,7 +1359,7 @@
     currentUser=session.user.email;
     $("#accountLabel").textContent=currentUser;
     $("#loginGate").classList.remove("show");
-    try{ await loadMembers(); await loadTasks(); startRealtime(); await loadNotifications(); subscribeNotifications(); renderNotifications(); renderAll(); }
+    try{ await loadMembers(); await loadTaxonomies(); await loadTasks(); startRealtime(); await loadNotifications(); subscribeNotifications(); renderNotifications(); renderAll(); }
     catch(error){ authMessage("เข้าสู่ระบบแล้ว แต่โหลดข้อมูลงานไม่สำเร็จ: "+(error.message||"โปรดตรวจสิทธิ์ Supabase")); $("#loginGate").classList.add("show"); }
   }
 
