@@ -219,7 +219,17 @@
   }
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--steel);}
   .field textarea{resize:vertical;min-height:60px;}
+  .field select[multiple]{height:auto;padding:5px;}
+  .field select[multiple] option{padding:6px 8px;border-radius:5px;}
+  .field-help{font-size:10.5px;color:var(--muted);margin-top:2px;}
   .modal-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 22px;border-top:1px solid var(--line);flex-shrink:0;background:var(--panel);}
+  .members-modal{max-width:560px;}
+  .member-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-soft);}
+  .member-row:last-child{border-bottom:0;}
+  .member-row .avatar{width:32px;height:32px;font-size:12px;flex-shrink:0;}
+  .member-row .m-email{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;}
+  .member-row input{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:7px 9px;color:var(--text);font:14px var(--sans);}
+  .member-row button{flex-shrink:0;}
 
   .empty{text-align:center;padding:50px 20px;color:var(--muted-2);}
   .empty .big{font-family:var(--cond);font-size:15px;color:var(--muted);margin-bottom:4px;}
@@ -271,11 +281,27 @@
     <button data-view="list">List</button>
   </div>
   <button class="btn" id="exportBtn">Export JSON</button>
+  <button class="btn" id="membersBtn">👥 สมาชิก</button>
   <span class="account" id="accountLabel"></span>
   <button class="btn icon-btn" id="notifyBtn" aria-label="การแจ้งเตือน">🔔<span class="badge" id="notifyBadge">0</span></button>
   <button class="btn btn-primary" id="newTaskBtn">+ งานใหม่</button>
 </div>
 <div class="notification-menu" id="notificationMenu"><h4>การแจ้งเตือน</h4><div id="notificationList"></div></div>
+
+<div class="overlay" id="membersOverlay">
+  <div class="modal members-modal">
+    <div class="modal-head">
+      <h3>สมาชิกที่ลงทะเบียนแล้ว</h3>
+      <button class="modal-close" id="membersClose">✕</button>
+    </div>
+    <div class="modal-scroll">
+      <div class="form-section">
+        <div class="field-help" style="margin-bottom:10px;">ตั้งชื่อที่แสดงผลของแต่ละคน แล้วกด "บันทึก" — ชื่อนี้จะใช้แสดงในรายการผู้รับผิดชอบทั่วทั้งแอป</div>
+        <div id="membersList"><div class="file-help">กำลังโหลด...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="layout">
   <div class="sidebar">
@@ -358,9 +384,10 @@
       <div class="form-section">
         <div class="form-section-title">ผู้รับผิดชอบ &amp; กำหนดการ</div>
         <div class="modal-body">
-          <div class="field">
-            <label>ผู้รับผิดชอบ</label>
-            <input type="email" id="f-assignee" placeholder="name@factory.com">
+          <div class="field full">
+            <label>ผู้รับผิดชอบ (เลือกได้หลายคน — กด Ctrl/Cmd ค้างเพื่อเลือกหลายคน)</label>
+            <select id="f-assignee" multiple size="4"></select>
+            <div class="field-help">รายชื่อมาจากผู้ที่ลงทะเบียนใช้งานแล้วเท่านั้น — ดูหรือแก้ชื่อได้ที่ปุ่ม "👥 สมาชิก"</div>
           </div>
           <div class="field">
             <label>แผนก</label>
@@ -398,7 +425,7 @@
       <div class="form-section" id="taskDetailSection" style="display:none;">
         <div class="form-section-title">งานย่อย &amp; ประวัติกิจกรรม</div>
         <div class="detail-grid" id="taskDetail">
-          <div class="detail-panel"><h4>งานย่อย</h4><div id="subtaskList"></div><div class="add-inline subtask-add"><input id="subtaskInput" placeholder="ชื่องานย่อย..."><select id="subtaskStatus"><option value="1">To Do</option><option value="2">In Progress</option><option value="3">Pending</option><option value="4">Complete</option></select><input id="subtaskAssignee" type="email" placeholder="ผู้รับผิดชอบ"><input id="subtaskDue" type="date"><button class="btn" id="addSubtaskBtn">เพิ่ม</button></div></div>
+          <div class="detail-panel"><h4>งานย่อย</h4><div id="subtaskList"></div><div class="add-inline subtask-add"><input id="subtaskInput" placeholder="ชื่องานย่อย..."><select id="subtaskStatus"><option value="1">To Do</option><option value="2">In Progress</option><option value="3">Pending</option><option value="4">Complete</option></select><select id="subtaskAssignee" multiple size="3" style="flex-basis:100%"></select><input id="subtaskDue" type="date"><button class="btn" id="addSubtaskBtn">เพิ่ม</button></div></div>
           <div class="detail-panel"><h4>ประวัติกิจกรรม</h4><div class="activity" id="activityList"></div></div>
         </div>
       </div>
@@ -440,19 +467,20 @@
   ];
 
   const SEED = [
-    {id:"TSK-001", title:"1. จัดทำงบประมาณ (Budget) ก.ย. ถึงสิ้นปี", category:CATEGORIES[0], priority:"High", status:"1", assignee:"Somchai.p@factory.com", department:"Finance & Management", location:"สำนักงานบัญชี", due:"2026-09-30", link:"https://onedrive.live.com/budget_q3_q4", note:"รวบรวมค่าใช้จ่ายและประมาณการงบประมาณ"},
-    {id:"TSK-002", title:"2. วางแผนจัดทำงบประมาณ (Budget) ปี 2579", category:CATEGORIES[0], priority:"Normal", status:"1", assignee:"Somchai.p@factory.com", department:"Finance & Management", location:"สำนักงานบัญชี", due:"2026-11-30", link:"https://onedrive.live.com/budget_2579", note:"วางแผนงบประมาณลงทุนประจำปี 2579"},
-    {id:"TSK-003", title:"3. โครงการเริ่มใช้ถุงแบบไม่ต้องเย็บด้าย", category:CATEGORIES[3], priority:"Normal", status:"2", assignee:"Anan.k@factory.com", department:"Packing Room", location:"ห้องแพ็คไลน์ 1", due:"2026-10-15", link:"https://onedrive.live.com/bag_trial", note:"ทดลองความแข็งแรงของการซีลความร้อน"},
-    {id:"TSK-004", title:"4. BRC Audit: เดินตรวจไลน์เพื่อประเมินการซ่อมบำรุง", category:CATEGORIES[1], priority:"High", status:"2", assignee:"Wichai.m@factory.com", department:"Maintenance", location:"ไลน์ผลิตทั้งหมด", due:"2026-09-15", link:"https://onedrive.live.com/brc_audit_walkthrough", note:"ทำ Punch list ร่วมระหว่าง QA และช่างซ่อม"},
-    {id:"TSK-005", title:"5. ยกระดับความสะอาดในไลน์ผลิต (ยังไม่ดีพอ)", category:CATEGORIES[2], priority:"High", status:"2", assignee:"Suda.t@factory.com", department:"Production", location:"ไลน์ผลิต 1-3", due:"2026-08-30", link:"https://onedrive.live.com/hygiene_checklist", note:"ปรับ Cleaning Schedule และสุ่มตรวจความสะอาด"},
-    {id:"TSK-006", title:"6. ทดลองแพ็ค MK โดยใช้เครื่องจักร", category:CATEGORIES[3], priority:"Normal", status:"1", assignee:"Anan.k@factory.com", department:"Production", location:"ห้องแพ็คไลน์ 2", due:"2026-09-20", link:"https://onedrive.live.com/mk_packing_trial", note:"บันทึก Cycle Time, Yield และความสมบูรณ์ซอง"},
-    {id:"TSK-007", title:"7. แก้ไขถุงในห้องแพ็คยังใช้ผิดประเภท", category:CATEGORIES[1], priority:"High", status:"3", assignee:"Nok.s@factory.com", department:"Packing Room", location:"ห้องแพ็คไลน์ 1-2", due:"2026-08-25", link:"https://onedrive.live.com/bag_spec_sop", note:"ทำ Visual Control ติดสเปคถุงและเรียกเก็บถุงผิดประเภท"},
-    {id:"TSK-008", title:"8. แก้ไขวัตถุดิบหมดอายุไม่มีป้าย Hold", category:CATEGORIES[1], priority:"Urgent", status:"2", assignee:"Kitti.r@factory.com", department:"Warehouse", location:"คลังวัตถุดิบ RM", due:"2026-08-20", link:"https://onedrive.live.com/hold_protocol", note:"อบรมพนักงานและจัดทำมาตรการกักกันวัตถุดิบ"},
-    {id:"TSK-009", title:"8.1 แก้ไข RM ไม่มีป้ายบ่งชี้", category:CATEGORIES[1], priority:"Urgent", status:"3", assignee:"Kitti.r@factory.com", department:"Warehouse", location:"คลังวัตถุดิบ RM", due:"2026-08-18", link:"https://onedrive.live.com/rm_tag_photo", note:"ติดป้าย RM Tag ครบทุกจุด รอ QA เดินตรวจรับงาน"},
-    {id:"TSK-010", title:"9. โครงการย้ายห้องล้างไปพื้นที่ใหม่", category:CATEGORIES[4], priority:"Normal", status:"1", assignee:"Wichai.m@factory.com", department:"Maintenance", location:"โซนห้องล้างใหม่", due:"2026-12-15", link:"https://onedrive.live.com/washing_room_layout", note:"ออกแบบ Layout, ระบบน้ำ, ไฟฟ้า และระบายน้ำตาม BRC"}
+    {id:"TSK-001", title:"1. จัดทำงบประมาณ (Budget) ก.ย. ถึงสิ้นปี", category:CATEGORIES[0], priority:"High", status:"1", assignees:["somchai.p@factory.com"], department:"Finance & Management", location:"สำนักงานบัญชี", due:"2026-09-30", link:"https://onedrive.live.com/budget_q3_q4", note:"รวบรวมค่าใช้จ่ายและประมาณการงบประมาณ"},
+    {id:"TSK-002", title:"2. วางแผนจัดทำงบประมาณ (Budget) ปี 2579", category:CATEGORIES[0], priority:"Normal", status:"1", assignees:["somchai.p@factory.com"], department:"Finance & Management", location:"สำนักงานบัญชี", due:"2026-11-30", link:"https://onedrive.live.com/budget_2579", note:"วางแผนงบประมาณลงทุนประจำปี 2579"},
+    {id:"TSK-003", title:"3. โครงการเริ่มใช้ถุงแบบไม่ต้องเย็บด้าย", category:CATEGORIES[3], priority:"Normal", status:"2", assignees:["anan.k@factory.com"], department:"Packing Room", location:"ห้องแพ็คไลน์ 1", due:"2026-10-15", link:"https://onedrive.live.com/bag_trial", note:"ทดลองความแข็งแรงของการซีลความร้อน"},
+    {id:"TSK-004", title:"4. BRC Audit: เดินตรวจไลน์เพื่อประเมินการซ่อมบำรุง", category:CATEGORIES[1], priority:"High", status:"2", assignees:["wichai.m@factory.com"], department:"Maintenance", location:"ไลน์ผลิตทั้งหมด", due:"2026-09-15", link:"https://onedrive.live.com/brc_audit_walkthrough", note:"ทำ Punch list ร่วมระหว่าง QA และช่างซ่อม"},
+    {id:"TSK-005", title:"5. ยกระดับความสะอาดในไลน์ผลิต (ยังไม่ดีพอ)", category:CATEGORIES[2], priority:"High", status:"2", assignees:["suda.t@factory.com"], department:"Production", location:"ไลน์ผลิต 1-3", due:"2026-08-30", link:"https://onedrive.live.com/hygiene_checklist", note:"ปรับ Cleaning Schedule และสุ่มตรวจความสะอาด"},
+    {id:"TSK-006", title:"6. ทดลองแพ็ค MK โดยใช้เครื่องจักร", category:CATEGORIES[3], priority:"Normal", status:"1", assignees:["anan.k@factory.com"], department:"Production", location:"ห้องแพ็คไลน์ 2", due:"2026-09-20", link:"https://onedrive.live.com/mk_packing_trial", note:"บันทึก Cycle Time, Yield และความสมบูรณ์ซอง"},
+    {id:"TSK-007", title:"7. แก้ไขถุงในห้องแพ็คยังใช้ผิดประเภท", category:CATEGORIES[1], priority:"High", status:"3", assignees:["nok.s@factory.com"], department:"Packing Room", location:"ห้องแพ็คไลน์ 1-2", due:"2026-08-25", link:"https://onedrive.live.com/bag_spec_sop", note:"ทำ Visual Control ติดสเปคถุงและเรียกเก็บถุงผิดประเภท"},
+    {id:"TSK-008", title:"8. แก้ไขวัตถุดิบหมดอายุไม่มีป้าย Hold", category:CATEGORIES[1], priority:"Urgent", status:"2", assignees:["kitti.r@factory.com"], department:"Warehouse", location:"คลังวัตถุดิบ RM", due:"2026-08-20", link:"https://onedrive.live.com/hold_protocol", note:"อบรมพนักงานและจัดทำมาตรการกักกันวัตถุดิบ"},
+    {id:"TSK-009", title:"8.1 แก้ไข RM ไม่มีป้ายบ่งชี้", category:CATEGORIES[1], priority:"Urgent", status:"3", assignees:["kitti.r@factory.com"], department:"Warehouse", location:"คลังวัตถุดิบ RM", due:"2026-08-18", link:"https://onedrive.live.com/rm_tag_photo", note:"ติดป้าย RM Tag ครบทุกจุด รอ QA เดินตรวจรับงาน"},
+    {id:"TSK-010", title:"9. โครงการย้ายห้องล้างไปพื้นที่ใหม่", category:CATEGORIES[4], priority:"Normal", status:"1", assignees:["wichai.m@factory.com"], department:"Maintenance", location:"โซนห้องล้างใหม่", due:"2026-12-15", link:"https://onedrive.live.com/washing_room_layout", note:"ออกแบบ Layout, ระบบน้ำ, ไฟฟ้า และระบายน้ำตาม BRC"}
   ];
 
   let tasks = [];
+  let teamMembers = []; // {id, email, name} — จากตาราง profiles (เฉพาะโหมดคลาวด์)
   let filters = { status:null, priority:null, department:null, category:null, assignee:null, search:"" };
   let currentView = "board";
   let groupBy = "assignee";
@@ -519,16 +547,51 @@
     }
   }
 
+  function toAssigneeArray(assignees, legacyAssignee){
+    if(Array.isArray(assignees)) return assignees.filter(Boolean).map(e=>String(e).trim().toLowerCase());
+    if(legacyAssignee) return [String(legacyAssignee).trim().toLowerCase()];
+    return [];
+  }
   function migrateTasks(){
     tasks.forEach(t=>{
+      // รองรับข้อมูลเก่าที่เก็บ assignee เดี่ยว แปลงเป็น assignees แบบ array
+      t.assignees = toAssigneeArray(t.assignees, t.assignee);
+      delete t.assignee;
       t.subtasks = Array.isArray(t.subtasks) ? t.subtasks : [];
-      t.subtasks=t.subtasks.map(s=>({id:s.id||crypto.randomUUID(),title:s.title||"งานย่อย",status:s.status||(s.done?"4":"1"),assignee:s.assignee||t.assignee||"",due:s.due||"",createdAt:s.createdAt||new Date().toISOString()}));
+      t.subtasks=t.subtasks.map(s=>({id:s.id||crypto.randomUUID(),title:s.title||"งานย่อย",status:s.status||(s.done?"4":"1"),assignees:toAssigneeArray(s.assignees, s.assignee || t.assignees[0]),due:s.due||"",createdAt:s.createdAt||new Date().toISOString()}));
       t.attachments = Array.isArray(t.attachments) ? t.attachments : (t.link ? [{name:"ลิงก์เอกสาร",url:t.link,type:"link"}] : []);
       t.activity = Array.isArray(t.activity) ? t.activity : [{at:new Date().toISOString(),user:"system",text:"นำเข้ารายการงาน"}];
       delete t.parentId;
       t.start = t.start || "";
     });
     try { notifications = JSON.parse(window.localStorage.getItem("factory-ops-clickup-notifications") || "[]"); } catch(e) { notifications=[]; }
+  }
+  async function loadMembers(){
+    if(!cloud) return;
+    const {data,error} = await cloud.from("profiles").select("id,email,display_name").order("email");
+    if(error){ console.error("load members error", error); return; }
+    teamMembers = (data||[]).map(r=>({id:r.id, email:r.email, name:r.display_name || r.email.split("@")[0]}));
+  }
+  function memberName(email){
+    if(!email) return "";
+    const m = teamMembers.find(x=>x.email===String(email).toLowerCase());
+    return m ? m.name : email.split("@")[0];
+  }
+  function populateMemberSelect(id, selected){
+    const el = $(id);
+    const sel = new Set((selected||[]).map(e=>String(e).toLowerCase()));
+    if(!teamMembers.length){
+      el.innerHTML = `<option disabled>ยังไม่มีสมาชิกลงทะเบียน</option>`;
+      return;
+    }
+    el.innerHTML = teamMembers.map(m=>`<option value="${m.email}" ${sel.has(m.email)?"selected":""}>${escapeHTML(m.name)} (${escapeHTML(m.email)})</option>`).join("");
+  }
+  function getSelectedEmails(id){
+    return Array.from($(id).selectedOptions||[]).map(o=>o.value).filter(Boolean);
+  }
+  function assigneeNames(list){
+    if(!list || !list.length) return "ยังไม่กำหนดผู้รับผิดชอบ";
+    return list.map(memberName).join(", ");
   }
   function activity(t,text){
     const item={at:new Date().toISOString(),user:currentUser||"system",text};
@@ -609,10 +672,10 @@
       if(filters.priority && t.priority !== filters.priority) return false;
       if(filters.department && t.department !== filters.department) return false;
       if(filters.category && t.category !== filters.category) return false;
-      if(filters.assignee && (t.assignee||"") !== filters.assignee) return false;
+      if(filters.assignee && !(t.assignees||[]).includes(filters.assignee)) return false;
       if(filters.search){
         const s = filters.search.toLowerCase();
-        const hay = (t.title+" "+t.id+" "+t.assignee+" "+t.location).toLowerCase();
+        const hay = (t.title+" "+t.id+" "+(t.assignees||[]).join(" ")+" "+t.location).toLowerCase();
         if(!hay.includes(s)) return false;
       }
       return true;
@@ -643,8 +706,20 @@
     buildChips("#filterStatus", STATUSES, "status", s=>s.name, s=>s.id);
     buildChips("#filterPriority", PRIORITIES, "priority", p=>p.label, p=>p.id);
     buildChips("#filterDept", DEPARTMENTS.map(d=>({d})), "department", x=>x.d, x=>x.d);
-    const assignees=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-    buildChips("#filterAssignee", assignees.map(a=>({a})), "assignee", x=>x.a, x=>x.a);
+
+    // ผู้รับผิดชอบเป็น array ต่อ 1 งาน — นับ/กรองแยกจาก buildChips ทั่วไปด้านบน
+    const assigneeEmails=[...new Set(tasks.flatMap(t=>t.assignees||[]))].sort();
+    const elA = $("#filterAssignee");
+    elA.innerHTML = "";
+    assigneeEmails.forEach(email=>{
+      const count = tasks.filter(t=>(t.assignees||[]).includes(email)).length;
+      const div = document.createElement("div");
+      div.className = "chip" + (filters.assignee===email ? " active" : "");
+      div.innerHTML = `<span>${escapeHTML(memberName(email))}</span><span class="count">${count}</span>`;
+      div.onclick = ()=>{ filters.assignee = filters.assignee===email ? null : email; renderAll(); };
+      elA.appendChild(div);
+    });
+
     buildChips("#filterCategory", CATEGORIES.map(c=>({c})), "category", x=>x.c, x=>x.c);
   }
 
@@ -678,7 +753,10 @@
           ${t.attachments && t.attachments.length ? `<span class="tag dept">📎 ${t.attachments.length}</span>` : ""}
         </div>
         <div class="ticket-foot">
-          <span class="avatar">${initials(t.assignee)}</span>
+          <span style="display:flex;gap:3px;align-items:center;" title="${escapeHTML(assigneeNames(t.assignees))}">
+            ${(t.assignees&&t.assignees.length ? t.assignees.slice(0,3).map(a=>`<span class="avatar">${initials(a)}</span>`).join("") : `<span class="avatar">?</span>`)}
+            ${t.assignees && t.assignees.length>3 ? `<span class="tag dept">+${t.assignees.length-3}</span>` : ""}
+          </span>
           <span class="due ${dc}">เริ่ม ${fmtDue(t.start)} · ${fmtDue(t.due)}</span>
         </div>
       </div>`;
@@ -710,19 +788,22 @@
       const dc = dueClass(t.due, t.status);
       const st = STATUSES.find(s=>s.id===t.status);
       return `<div class="tree-row ${isSub?"sub-row":""}" data-id="${isSub?parentId:t.id}">
-        <div class="tree-main">${isSub?'<span class="tree-sub-icon">↳</span>':'<span class="tree-id">MAIN</span>'}<div style="min-width:0"><strong>${escapeHTML(t.title)}</strong><div class="tree-id">${isSub?escapeHTML(t.assignee||"ยังไม่กำหนดผู้รับผิดชอบ"):`${t.id} · ${t.subtasks.filter(s=>s.status==="4").length}/${t.subtasks.length} งานย่อย`}</div></div></div>
+        <div class="tree-main">${isSub?'<span class="tree-sub-icon">↳</span>':'<span class="tree-id">MAIN</span>'}<div style="min-width:0"><strong>${escapeHTML(t.title)}</strong><div class="tree-id">${isSub?escapeHTML(assigneeNames(t.assignees)):`${t.id} · ${t.subtasks.filter(s=>s.status==="4").length}/${t.subtasks.length} งานย่อย`}</div></div></div>
         <div class="tree-col">${isSub?"—":`<span class="tag pr-${priorityClass(t.priority)}">${priorityLabel(t.priority)}</span>`}</div>
         <div class="tree-col"><span class="status-pill st-${t.status}">${st.name}</span></div>
         <div class="tree-col">${isSub?fmtDue(t.due):escapeHTML(t.department)}</div>
         <div class="due ${dc}">${fmtDue(t.due)}</div>
       </div>`;
     };
-    const groups=groupBy==="assignee" ? [...new Set(list.map(t=>t.assignee||"ยังไม่กำหนดผู้รับผิดชอบ"))] : ["ทั้งหมด"];
-    body.innerHTML=groups.map(name=>{
-      const mains=groupBy==="assignee"?list.filter(t=>(t.assignee||"ยังไม่กำหนดผู้รับผิดชอบ")===name):list;
+    // จัดกลุ่มตาม "ผู้รับผิดชอบคนแรก" ของแต่ละงาน (งานที่มีหลายคนจะยึดคนแรกเป็นกลุ่มหลัก)
+    const primaryOf = t => (t.assignees && t.assignees[0]) || "ยังไม่กำหนดผู้รับผิดชอบ";
+    const groups=groupBy==="assignee" ? [...new Set(list.map(primaryOf))] : ["ทั้งหมด"];
+    body.innerHTML=groups.map(key=>{
+      const mains=groupBy==="assignee"?list.filter(t=>primaryOf(t)===key):list;
       const tree=mains.map(t=>row(t)+t.subtasks.map(s=>row(s,true,t.id)).join("")).join("");
       const count=mains.length+mains.reduce((sum,t)=>sum+t.subtasks.length,0);
-      return `<section class="assignee-group ${groupBy==='none'?'group-all':''}"><div class="assignee-head"><span class="avatar">${initials(name)}</span>${escapeHTML(name)} <span class="count">${count} รายการ</span></div><div class="task-tree">${tree}</div></section>`;
+      const label = key==="ยังไม่กำหนดผู้รับผิดชอบ" ? key : memberName(key);
+      return `<section class="assignee-group ${groupBy==='none'?'group-all':''}"><div class="assignee-head"><span class="avatar">${initials(key)}</span>${escapeHTML(label)} <span class="count">${count} รายการ</span></div><div class="task-tree">${tree}</div></section>`;
     }).join("");
     $$("#listBody [data-id]").forEach(item=>{
       item.onclick = ()=> openModal(item.dataset.id);
@@ -777,6 +858,34 @@
     el.innerHTML = options.map(o=>`<option value="${o}">${o}</option>`).join("");
   }
 
+  function renderMembersList(){
+    const el = $("#membersList");
+    if(!teamMembers.length){ el.innerHTML = `<div class="file-help">ยังไม่มีใครลงทะเบียนใช้งาน</div>`; return; }
+    el.innerHTML = teamMembers.map(m=>`
+      <div class="member-row" data-member="${m.id}">
+        <span class="avatar">${initials(m.email)}</span>
+        <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:3px;">
+          <input type="text" data-name-input value="${escapeHTML(m.name)}" placeholder="ชื่อที่แสดงผล">
+          <span class="m-email">${escapeHTML(m.email)}</span>
+        </div>
+        <button class="btn" data-save-member>บันทึก</button>
+      </div>`).join("");
+    $$("[data-save-member]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const row = btn.closest("[data-member]");
+        const id = row.dataset.member;
+        const name = row.querySelector("[data-name-input]").value.trim();
+        if(!name){ toast("กรุณากรอกชื่อ"); return; }
+        const {error} = await cloud.from("profiles").update({display_name:name}).eq("id", id);
+        if(error){ toast("บันทึกไม่สำเร็จ: "+error.message); return; }
+        const m = teamMembers.find(x=>x.id===id);
+        if(m) m.name = name;
+        toast("บันทึกชื่อแล้ว");
+        renderAll(); // ชื่อใหม่มีผลกับป้ายชื่อผู้รับผิดชอบทั่วแอปทันที
+      };
+    });
+  }
+
   // งานที่กำลังแก้ไขอยู่จริง (มี editingId) หรือ "ฉบับร่าง" ระหว่างสร้างงานใหม่ (ยังไม่มี id)
   function detailTarget(){
     return editingId ? tasks.find(x=>x.id===editingId) : {subtasks:draftSubtasks, attachments:[], activity:[]};
@@ -787,7 +896,8 @@
     $("#taskDetailSection").style.display = "block";
     $("#taskDetail").style.display = "grid";
     const attach=(t.attachments||[]).map(a=>`<div class="attachment">📎 ${a.data?`<a href="${a.data}" download="${escapeHTML(a.name)}">${escapeHTML(a.name)}</a>`:`<a target="_blank" rel="noopener" href="${escapeHTML(a.url||"#")}">${escapeHTML(a.name)}</a>`}</div>`).join("");
-    $("#subtaskList").innerHTML=(t.subtasks.map((s,i)=>`<div class="subtask ${s.status==="4"?"done":""}"><select data-sub-status="${i}">${STATUSES.map(st=>`<option value="${st.id}" ${s.status===st.id?"selected":""}>${st.name}</option>`).join("")}</select><span>${escapeHTML(s.title)}</span><span class="subtask-meta">${escapeHTML(s.assignee||"ไม่ระบุ")} · ${fmtDue(s.due)}</span><button data-remove-sub="${i}">✕</button></div>`).join("") || `<div class="file-help">${editingId?"ยังไม่มีงานย่อย":"ยังไม่มีงานย่อย — เพิ่มได้เลยแม้ยังไม่ได้กดบันทึกงานหลัก"}</div>`)+`<h4 style="margin-top:15px;">ไฟล์แนบ (${(t.attachments||[]).length})</h4>`+(attach||'<div class="file-help">ยังไม่มีไฟล์แนบ (แนบไฟล์ได้หลังบันทึกงานหลักแล้ว)</div>');
+    populateMemberSelect("#subtaskAssignee", []);
+    $("#subtaskList").innerHTML=(t.subtasks.map((s,i)=>`<div class="subtask ${s.status==="4"?"done":""}"><select data-sub-status="${i}">${STATUSES.map(st=>`<option value="${st.id}" ${s.status===st.id?"selected":""}>${st.name}</option>`).join("")}</select><span>${escapeHTML(s.title)}</span><span class="subtask-meta">${escapeHTML(assigneeNames(s.assignees))} · ${fmtDue(s.due)}</span><button data-remove-sub="${i}">✕</button></div>`).join("") || `<div class="file-help">${editingId?"ยังไม่มีงานย่อย":"ยังไม่มีงานย่อย — เพิ่มได้เลยแม้ยังไม่ได้กดบันทึกงานหลัก"}</div>`)+`<h4 style="margin-top:15px;">ไฟล์แนบ (${(t.attachments||[]).length})</h4>`+(attach||'<div class="file-help">ยังไม่มีไฟล์แนบ (แนบไฟล์ได้หลังบันทึกงานหลักแล้ว)</div>');
     $("#activityList").innerHTML=(t.activity||[]).map(a=>`<div class="activity-item"><i class="activity-dot"></i><div><strong>${escapeHTML(a.user)}</strong> ${escapeHTML(a.text)}<div class="activity-time">${formatTime(a.at)}</div></div></div>`).join("") || '<div class="file-help">ยังไม่มีประวัติกิจกรรม</div>';
     $$("[data-sub-status]").forEach(c=>c.onchange=async()=>{
       const cur=detailTarget(); const s=cur.subtasks[+c.dataset.subStatus]; const before=STATUSES.find(st=>st.id===s.status).name;
@@ -816,7 +926,7 @@
     $("#f-category").value = t ? t.category : CATEGORIES[0];
     $("#f-priority").value = t ? t.priority : "Normal";
     $("#f-status").value = t ? t.status : "1";
-    $("#f-assignee").value = t ? t.assignee : "";
+    populateMemberSelect("#f-assignee", t ? t.assignees : []);
     $("#f-department").value = t ? t.department : DEPARTMENTS[0];
     $("#f-location").value = t ? t.location : "";
     $("#f-start").value = t ? t.start : "";
@@ -842,7 +952,7 @@
       category: $("#f-category").value,
       priority: $("#f-priority").value,
       status: $("#f-status").value,
-      assignee: $("#f-assignee").value.trim().toLowerCase(),
+      assignees: getSelectedEmails("#f-assignee"),
       department: $("#f-department").value,
       location: $("#f-location").value.trim(),
       due: $("#f-due").value,
@@ -915,12 +1025,20 @@
     $("#modalClose").onclick = closeModal;
     $("#modalBack").onclick = closeModal;
     $("#cancelBtn").onclick = closeModal;
+    $("#membersBtn").onclick = async ()=>{
+      if(!cloud){ toast("ต้องเชื่อมต่อ Supabase ก่อนจึงจะจัดการสมาชิกได้"); return; }
+      await loadMembers();
+      renderMembersList();
+      $("#membersOverlay").classList.add("show");
+    };
+    $("#membersClose").onclick = ()=> $("#membersOverlay").classList.remove("show");
+    $("#membersOverlay").addEventListener("click", e=>{ if(e.target.id==="membersOverlay") $("#membersOverlay").classList.remove("show"); });
     $("#saveBtn").onclick = saveTask;
     $("#deleteBtn").onclick = deleteTask;
     $("#addSubtaskBtn").onclick = async ()=>{
       const input=$("#subtaskInput"), title=input.value.trim();
       if(!title){ toast("กรุณากรอกชื่องานย่อย"); return; }
-      const sub={id:crypto.randomUUID(),title,status:$("#subtaskStatus").value,assignee:$("#subtaskAssignee").value.trim().toLowerCase(),due:$("#subtaskDue").value,createdAt:new Date().toISOString()};
+      const sub={id:crypto.randomUUID(),title,status:$("#subtaskStatus").value,assignees:getSelectedEmails("#subtaskAssignee"),due:$("#subtaskDue").value,createdAt:new Date().toISOString()};
       if(editingId){
         const t=tasks.find(x=>x.id===editingId);
         t.subtasks.push(sub);
@@ -930,7 +1048,7 @@
       }else{
         draftSubtasks.push(sub); // ยังไม่ได้บันทึกงานหลัก เก็บไว้ในฉบับร่างก่อน จะถูกบันทึกพร้อมกันตอนกดบันทึก
       }
-      input.value=""; $("#subtaskAssignee").value=""; $("#subtaskDue").value="";
+      input.value=""; $("#subtaskDue").value="";
       renderTaskDetail();
     };
     $("#exportBtn").onclick = exportJSON;
@@ -1029,7 +1147,7 @@
     currentUser=session.user.email;
     $("#accountLabel").textContent=currentUser;
     $("#loginGate").classList.remove("show");
-    try{ await loadTasks(); startRealtime(); await loadNotifications(); subscribeNotifications(); renderNotifications(); renderAll(); }
+    try{ await loadMembers(); await loadTasks(); startRealtime(); await loadNotifications(); subscribeNotifications(); renderNotifications(); renderAll(); }
     catch(error){ authMessage("เข้าสู่ระบบแล้ว แต่โหลดข้อมูลงานไม่สำเร็จ: "+(error.message||"โปรดตรวจสิทธิ์ Supabase")); $("#loginGate").classList.add("show"); }
   }
 
