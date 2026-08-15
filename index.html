@@ -278,19 +278,56 @@
   .notification-menu{position:fixed;right:20px;top:58px;width:340px;max-height:420px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 45px rgba(0,0,0,.45);z-index:70;padding:8px;display:none}.notification-menu.show{display:block}.notification-menu h4{font:11px var(--mono);color:var(--muted);letter-spacing:.8px;margin:8px}.notice{padding:10px;border-bottom:1px solid var(--line-soft);font-size:12px;cursor:pointer}.notice:hover{background:var(--panel-2)}.notice.unread{border-left:2px solid var(--steel)}
   .login-gate{position:fixed;inset:0;background:rgba(36,48,68,.25);backdrop-filter:blur(5px);z-index:300;display:none;align-items:center;justify-content:center;padding:20px}.login-gate.show{display:flex}.login-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px;box-shadow:0 20px 55px rgba(36,48,68,.18)}.login-card h2{font-family:var(--cond);font-size:25px;margin:12px 0 5px}.login-card p{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5}.login-card input{width:100%;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:11px;margin:6px 0 12px;font:15px var(--sans)}.auth-tabs{display:flex;gap:4px;padding:4px;margin:0 0 19px;border-radius:9px;background:var(--panel-2)}.auth-tabs button{flex:1;border:0;border-radius:6px;padding:9px;background:transparent;color:var(--muted);font:600 14px var(--sans);cursor:pointer}.auth-tabs button.active{background:var(--panel);color:var(--steel);box-shadow:0 1px 3px rgba(36,48,68,.12)}.auth-label{display:block;font:12px var(--mono);color:var(--muted);margin-bottom:2px}.auth-confirm{display:none}.auth-confirm.show{display:block}.auth-message{display:none;margin:12px 0 0;padding:10px;border-radius:7px;background:var(--steel-bg);color:var(--steel);font-size:13px;line-height:1.45}.auth-message.show{display:block}.auth-resend{display:none;margin-top:10px;width:100%;justify-content:center}.auth-resend.show{display:inline-flex}.auth-foot{margin-top:14px!important;font-size:12px!important}
 
+  /* ===== More-menu (รวมปุ่มรอง Export/สมาชิก/แจ้งเตือน/บัญชี) ===== */
+  .more-menu{position:fixed;right:16px;top:58px;width:230px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 45px rgba(0,0,0,.45);z-index:70;padding:8px;display:none;flex-direction:column;gap:4px;}
+  .more-menu.show{display:flex;}
+  .more-menu .btn{width:100%;justify-content:flex-start;}
+  .more-menu .account{max-width:none;padding:8px 10px;border-top:1px solid var(--line-soft);margin-top:4px;}
+  .mobile-filter-btn{display:none;}
+
+  /* ===== Sidebar เป็นลิ้นชักเลื่อนเข้า-ออกบนมือถือ ===== */
+  .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(10,12,15,.6);z-index:88;}
+  .sidebar-backdrop.show{display:block;}
+  .sidebar-mobile-head{display:none;}
+
   @media(max-width:860px){
-    .sidebar{display:none;}
+    body{font-size:15px;}
+    .topbar{padding:12px 14px;gap:10px;}
+    .brand-text .sub{display:none;}
+    .brand-text h1{font-size:15px;}
+    .view-switch button{padding:7px 10px;font-size:13px;}
+    .mobile-filter-btn{display:inline-flex;}
+    .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .stat-card{min-width:0;}
+    .main{padding:14px 14px 60px;}
+
+    .sidebar{
+      display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;
+      width:84vw;max-width:320px;height:100vh;z-index:90;background:var(--bg);
+      border-right:1px solid var(--line);box-shadow:12px 0 40px rgba(0,0,0,.5);
+      transform:translateX(-100%);transition:transform .22s ease;padding:16px 14px;
+    }
+    .sidebar.show{transform:translateX(0);}
+    .sidebar-mobile-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+    .sidebar-mobile-head strong{font-family:var(--cond);font-size:16px;}
+
     .overlay{padding:0;}
     .modal{height:100vh;max-height:none;border-radius:0;max-width:100%;}
     .modal-body{grid-template-columns:1fr;}
+    .subtask-form{grid-template-columns:1fr;}
     .detail-grid{grid-template-columns:1fr;}
     .tree-row{grid-template-columns:1fr 100px;}.tree-row .tree-col:nth-of-type(n+2){display:none;}
+    .field input,.field select,.field textarea,.tag-picker-input{font-size:16px;}
+    .notification-menu{right:8px;left:8px;width:auto;top:56px;}
+    .more-menu{right:8px;width:calc(100vw - 16px);max-width:260px;}
+    .col{width:80vw;}
   }
 </style>
 </head>
 <body>
 
 <div class="topbar">
+  <button class="btn icon-btn mobile-filter-btn" id="filterToggleBtn" aria-label="ตัวกรอง">☰</button>
   <div class="brand">
     <div class="brand-mark">FO</div>
     <div class="brand-text">
@@ -303,14 +340,18 @@
     <button data-view="board" class="active">Board</button>
     <button data-view="list">List</button>
   </div>
-  <button class="btn" id="exportBtn">Export JSON</button>
-  <button class="btn" id="membersBtn">👥 สมาชิก</button>
-  <span class="account" id="accountLabel"></span>
-  <button class="btn" id="pushBtn" style="display:none;">🔕 เปิดการแจ้งเตือน</button>
+  <button class="btn icon-btn" id="moreBtn" aria-label="เพิ่มเติม">⋯</button>
   <button class="btn icon-btn" id="notifyBtn" aria-label="การแจ้งเตือน">🔔<span class="badge" id="notifyBadge">0</span></button>
   <button class="btn btn-primary" id="newTaskBtn">+ งานใหม่</button>
 </div>
+<div class="more-menu" id="moreMenu">
+  <button class="btn" id="exportBtn">📤 Export JSON</button>
+  <button class="btn" id="membersBtn">👥 สมาชิก</button>
+  <button class="btn" id="pushBtn" style="display:none;">🔕 เปิดการแจ้งเตือน</button>
+  <span class="account" id="accountLabel"></span>
+</div>
 <div class="notification-menu" id="notificationMenu"><h4>การแจ้งเตือน</h4><div id="notificationList"></div></div>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
 <div class="overlay" id="membersOverlay">
   <div class="modal members-modal">
@@ -329,6 +370,7 @@
 
 <div class="layout">
   <div class="sidebar">
+    <div class="sidebar-mobile-head"><strong>ตัวกรอง</strong><button class="modal-close" id="sidebarCloseBtn">✕</button></div>
     <div class="search-box">
       <span>⌕</span>
       <input type="text" id="searchInput" placeholder="ค้นหางาน...">
@@ -901,6 +943,10 @@
     });
   }
 
+  // ลิ้นชักตัวกรองบนมือถือ — เรียกใช้ได้จากทั้ง bindUI และตอนเลือกตัวกรองในรายการ
+  function openSidebar(){ $(".sidebar").classList.add("show"); $("#sidebarBackdrop").classList.add("show"); }
+  function closeSidebar(){ $(".sidebar").classList.remove("show"); $("#sidebarBackdrop").classList.remove("show"); }
+
   function renderSidebar(){
     const list = filteredTasks().sort((a,b)=>(a.start||"9999-12-31").localeCompare(b.start||"9999-12-31"));
 
@@ -1323,9 +1369,23 @@
       await loadMembers();
       renderMembersList();
       $("#membersOverlay").classList.add("show");
+      $("#moreMenu").classList.remove("show");
     };
     $("#membersClose").onclick = ()=> $("#membersOverlay").classList.remove("show");
     $("#membersOverlay").addEventListener("click", e=>{ if(e.target.id==="membersOverlay") $("#membersOverlay").classList.remove("show"); });
+
+    // เมนู "เพิ่มเติม" (Export/สมาชิก/แจ้งเตือน) — ยุบรวมไว้ประหยัดที่บนมือถือ
+    $("#moreBtn").onclick = ()=> $("#moreMenu").classList.toggle("show");
+    document.addEventListener("click", e=>{
+      if(!$("#moreMenu").contains(e.target) && e.target.id!=="moreBtn"){ $("#moreMenu").classList.remove("show"); }
+      if(!$("#notificationMenu").contains(e.target) && e.target.id!=="notifyBtn"){ $("#notificationMenu").classList.remove("show"); }
+    });
+
+    // ลิ้นชักตัวกรองบนมือถือ
+    $("#filterToggleBtn").onclick = openSidebar;
+    $("#sidebarCloseBtn").onclick = closeSidebar;
+    $("#sidebarBackdrop").onclick = closeSidebar;
+
     $("#saveBtn").onclick = saveTask;
     $("#deleteBtn").onclick = deleteTask;
     $("#addSubtaskOpenBtn").onclick = ()=> openSubtaskForm(undefined);
