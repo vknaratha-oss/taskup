@@ -306,6 +306,7 @@
   <button class="btn" id="exportBtn">Export JSON</button>
   <button class="btn" id="membersBtn">👥 สมาชิก</button>
   <span class="account" id="accountLabel"></span>
+  <button class="btn" id="pushBtn" style="display:none;">🔕 เปิดการแจ้งเตือน</button>
   <button class="btn icon-btn" id="notifyBtn" aria-label="การแจ้งเตือน">🔔<span class="badge" id="notifyBadge">0</span></button>
   <button class="btn btn-primary" id="newTaskBtn">+ งานใหม่</button>
 </div>
@@ -781,6 +782,78 @@
     }
     notifications.forEach(n=>n.read=true);
   }
+
+  // ===== Web Push: แจ้งเตือนแบบ popup บนคอม/มือถือ เหมือนแอปแชท =====
+  const VAPID_PUBLIC_KEY = "BOJRvb_ppxVAvrQkIVDd-MLobGfLNB8NDvaIPabIo6i6wykb6iKf6XSCkfHT2mMagho8kXHVgErxYD6lHWVraJE";
+  const pushSupported = ("serviceWorker" in navigator) && ("PushManager" in window);
+  let swRegistration = null;
+
+  function urlBase64ToUint8Array(base64String){
+    const padding = "=".repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = atob(base64);
+    const arr = new Uint8Array(rawData.length);
+    for(let i=0;i<rawData.length;i++) arr[i]=rawData.charCodeAt(i);
+    return arr;
+  }
+
+  function updatePushButton(subscribed){
+    const btn = $("#pushBtn");
+    if(!btn) return;
+    if(!pushSupported || !cloud){ btn.style.display="none"; return; }
+    btn.style.display = "inline-flex";
+    btn.textContent = subscribed ? "🔔 แจ้งเตือน: เปิดอยู่" : "🔕 เปิดการแจ้งเตือน";
+    btn.classList.toggle("btn-primary", !!subscribed);
+  }
+
+  async function initPush(){
+    if(!pushSupported || !cloud){ updatePushButton(false); return; }
+    try{
+      swRegistration = await navigator.serviceWorker.register("./sw.js");
+      const existing = await swRegistration.pushManager.getSubscription();
+      updatePushButton(!!existing);
+    }catch(e){
+      console.error("SW register error", e);
+      updatePushButton(false);
+    }
+  }
+
+  async function togglePush(){
+    if(!pushSupported){ toast("เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนแบบ Push (บน iPhone ต้องเพิ่มเว็บนี้ลงหน้าจอโฮมก่อน)"); return; }
+    if(!cloud){ toast("ต้องเชื่อมต่อ Supabase ก่อนจึงจะใช้การแจ้งเตือนได้"); return; }
+    if(!swRegistration){ await initPush(); if(!swRegistration) return; }
+
+    const existing = await swRegistration.pushManager.getSubscription();
+    if(existing){
+      await cloud.from("push_subscriptions").delete().eq("endpoint", existing.endpoint);
+      await existing.unsubscribe();
+      updatePushButton(false);
+      toast("ปิดการแจ้งเตือนที่เครื่องนี้แล้ว");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if(permission !== "granted"){ toast("กรุณาอนุญาตการแจ้งเตือนจากเบราว์เซอร์เพื่อใช้งานฟีเจอร์นี้"); return; }
+
+    try{
+      const sub = await swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      const { error } = await cloud.from("push_subscriptions").upsert({
+        endpoint: sub.endpoint,
+        subscription: sub.toJSON(),
+        recipient_email: currentUser
+      }, { onConflict: "endpoint" });
+      if(error){ toast("บันทึกการแจ้งเตือนไม่สำเร็จ: "+error.message); return; }
+      updatePushButton(true);
+      toast("เปิดการแจ้งเตือนแบบ popup แล้ว 🔔");
+    }catch(e){
+      console.error("subscribe error", e);
+      toast("เปิดการแจ้งเตือนไม่สำเร็จ ลองใหม่อีกครั้ง");
+    }
+  }
+
   function formatTime(iso){ return new Date(iso).toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"}); }
   function readAttachments(files){
     if(cloud) return Promise.all(files.map(async f=>{const {data:{user}}=await cloud.auth.getUser();const path=`${user.id}/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;const {error}=await cloud.storage.from("attachments").upload(path,f);if(error)throw error;const {data}=cloud.storage.from("attachments").getPublicUrl(path);return {name:f.name,type:f.type||"file",size:f.size,url:data.publicUrl,path,addedAt:new Date().toISOString()};}));
@@ -1272,6 +1345,7 @@
       renderAll();
     };
     $("#notifyBtn").onclick=async ()=>{const menu=$("#notificationMenu");menu.classList.toggle("show");await markNotificationsRead();if(!cloud) await persist();renderNotifications();};
+    $("#pushBtn").onclick = togglePush;
     $("#groupBy").onchange=e=>{groupBy=e.target.value;renderList();};
     $("#authLoginTab").onclick=()=>setAuthMode("signin");
     $("#authSignupTab").onclick=()=>setAuthMode("signup");
@@ -1359,7 +1433,7 @@
     currentUser=session.user.email;
     $("#accountLabel").textContent=currentUser;
     $("#loginGate").classList.remove("show");
-    try{ await loadMembers(); await loadTaxonomies(); await loadTasks(); startRealtime(); await loadNotifications(); subscribeNotifications(); renderNotifications(); renderAll(); }
+    try{ await loadMembers(); await loadTaxonomies(); await loadTasks(); startRealtime(); await loadNotifications(); subscribeNotifications(); renderNotifications(); await initPush(); renderAll(); }
     catch(error){ authMessage("เข้าสู่ระบบแล้ว แต่โหลดข้อมูลงานไม่สำเร็จ: "+(error.message||"โปรดตรวจสิทธิ์ Supabase")); $("#loginGate").classList.add("show"); }
   }
 
